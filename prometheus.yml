@@ -1,0 +1,6 @@
+scrape_configs:
+- job_name: lndmon
+  scrape_interval: 5s
+  static_configs:
+  - targets:
+    - lndmon:9092

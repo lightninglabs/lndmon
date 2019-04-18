@@ -1,0 +1,27 @@
+version: "3.1"
+services:
+ 
+  lndmon:
+    image: swagittarius/lndmon:v1
+    ports:
+      - "9092:9092"
+    environment:
+      - GO111MODULE=on
+      - HOST_ADDR=${HOST_ADDR?:err}
+      - TESTNET=${TESTNET}
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command: "--config.file=/etc/prometheus/prometheus.yml"
+    ports:
+      - "9096:9096"
+    
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana.ini:/etc/grafana/grafana.ini
+#       - ./datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yaml
