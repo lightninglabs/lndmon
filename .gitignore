@@ -13,4 +13,5 @@
 
 # vmw
 .vscode
-user-config/*
+tls.cert
+admin.macaroon
