@@ -1,0 +1,34 @@
+version: "3.7"
+services:
+ 
+  lndmon:
+    build: .
+    ports:
+      - "9092:9092"
+    volumes:
+      - ${TLS_CERT_PATH?}:/root/.lnd/tls.cert
+      - ${MACAROON_PATH?}:/root/.lnd/
+    command: --prometheus.listenaddr=0.0.0.0:9092 --lnd.network=$LND_NETWORK --lnd.host=$LND_HOST --lnd.macaroondir=/root/.lnd --lnd.tlspath=/root/.lnd/tls.cert
+
+  prometheus:
+    image: prom/prometheus:v2.9.2
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-storage:/prometheus
+    command: "--config.file=/etc/prometheus/prometheus.yml"
+    ports:
+      - "9090:9090"
+    depends_on:
+      - lndmon
+
+  grafana:
+    image: grafana/grafana:6.2.0
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning/:/etc/grafana/provisioning/
+      - grafana-storage:/var/lib/grafana
+
+volumes:
+  grafana-storage:
+  prometheus-storage:

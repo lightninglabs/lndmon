@@ -1,0 +1,40 @@
+version: "3.7"
+
+services:
+  prometheus:
+    command: "--config.file=/etc/prometheus/prometheus.yml --web.external-url=https://${LETSENCRYPT_FQDN?}/prometheus --web.route-prefix=/"
+
+  grafana:
+    volumes:
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+
+  nginx:
+    build: ./nginx
+    restart: always
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+    volumes:
+      - ./nginx/etc/.htpasswd:/etc/nginx/.htpasswd
+      - ./nginx/etc/ssl:/etc/nginx/ssl
+      - ./nginx/etc/service.conf:/etc/nginx/service.conf
+    ports:
+      - "80:80"
+      - "443:443"
+
+    environment:
+      - LETSENCRYPT=true
+      - "TZ=${TIMEZONE}"
+      - "LE_EMAIL=${LETSENCRYPT_EMAIL?}"
+      - "LE_FQDN=${LETSENCRYPT_FQDN?}"
+
+      # Uncomment the lines below to use your own TLS certs.
+      # - "SSL_CERT=${SSL_CERT}"
+      # - "SSL_KEY=${SSL_KEY}"
+      # - "SSL_CHAIN_CERT=${SSL_CHAIN_CERT}"
+    depends_on:
+      - grafana
