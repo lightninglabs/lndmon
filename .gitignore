@@ -10,3 +10,10 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+flymd.html
+flymd.md
+user-config/*
+!user-config/.gitkeep
+nginx/etc/ssl/*
+nginx/etc/.htpasswd
