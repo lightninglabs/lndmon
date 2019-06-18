@@ -7,18 +7,18 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// chainCollector is a collector that keeps track of on-chain information.
-type chainCollector struct {
+// ChainCollector is a collector that keeps track of on-chain information.
+type ChainCollector struct {
 	bestBlockHeight    *prometheus.Desc
 	bestBlockTimestamp *prometheus.Desc
 
 	lnd lnrpc.LightningClient
 }
 
-// newChainCollector returns a new instance of the chainCollector for the target
+// NewChainCollector returns a new instance of the ChainCollector for the target
 // lnd client.
-func newChainCollector(lnd lnrpc.LightningClient) *chainCollector {
-	return &chainCollector{
+func NewChainCollector(lnd lnrpc.LightningClient) *ChainCollector {
+	return &ChainCollector{
 		bestBlockHeight: prometheus.NewDesc(
 			"lnd_chain_block_height", "best block height from lnd",
 			nil, nil,
@@ -37,7 +37,7 @@ func newChainCollector(lnd lnrpc.LightningClient) *chainCollector {
 // last descriptor has been sent.
 //
 // NOTE: Part of the prometheus.Collector interface.
-func (c *chainCollector) Describe(ch chan<- *prometheus.Desc) {
+func (c *ChainCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.bestBlockHeight
 	ch <- c.bestBlockTimestamp
 }
@@ -45,7 +45,7 @@ func (c *chainCollector) Describe(ch chan<- *prometheus.Desc) {
 // Collect is called by the Prometheus registry when collecting metrics.
 //
 // NOTE: Part of the prometheus.Collector interface.
-func (c *chainCollector) Collect(ch chan<- prometheus.Metric) {
+func (c *ChainCollector) Collect(ch chan<- prometheus.Metric) {
 	resp, err := c.lnd.GetInfo(context.Background(), &lnrpc.GetInfoRequest{})
 	if err != nil {
 		chainLogger.Error(err)
@@ -66,7 +66,7 @@ func (c *chainCollector) Collect(ch chan<- prometheus.Metric) {
 func init() {
 	metricsMtx.Lock()
 	collectors["chain"] = func(lnd lnrpc.LightningClient) prometheus.Collector {
-		return newChainCollector(lnd)
+		return NewChainCollector(lnd)
 	}
 	metricsMtx.Unlock()
 }

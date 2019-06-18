@@ -8,8 +8,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// graphCollector is a collector that keeps track of graph information.
-type graphCollector struct {
+// GraphCollector is a collector that keeps track of graph information.
+type GraphCollector struct {
 	numEdgesDesc *prometheus.Desc
 	numNodesDesc *prometheus.Desc
 
@@ -22,11 +22,11 @@ type graphCollector struct {
 	lnd lnrpc.LightningClient
 }
 
-// newGraphCollector returns a new instance of the graphCollector for the target
+// NewGraphCollector returns a new instance of the GraphCollector for the target
 // lnd client.
-func newGraphCollector(lnd lnrpc.LightningClient) *graphCollector {
+func NewGraphCollector(lnd lnrpc.LightningClient) *GraphCollector {
 	labels := []string{"chan_id", "pubkey"}
-	return &graphCollector{
+	return &GraphCollector{
 		numEdgesDesc: prometheus.NewDesc(
 			"lnd_graph_edges_count",
 			"total number of edges in the graph",
@@ -73,7 +73,7 @@ func newGraphCollector(lnd lnrpc.LightningClient) *graphCollector {
 // last descriptor has been sent.
 //
 // NOTE: Part of the prometheus.Collector interface.
-func (g *graphCollector) Describe(ch chan<- *prometheus.Desc) {
+func (g *GraphCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- g.numEdgesDesc
 	ch <- g.numNodesDesc
 
@@ -87,7 +87,7 @@ func (g *graphCollector) Describe(ch chan<- *prometheus.Desc) {
 // Collect is called by the Prometheus registry when collecting metrics.
 //
 // NOTE: Part of the prometheus.Collector interface.
-func (g *graphCollector) Collect(ch chan<- prometheus.Metric) {
+func (g *GraphCollector) Collect(ch chan<- prometheus.Metric) {
 	resp, err := g.lnd.DescribeGraph(
 		context.Background(), &lnrpc.ChannelGraphRequest{},
 	)
@@ -111,7 +111,7 @@ func (g *graphCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
-func (g *graphCollector) collectRoutingPolicyMetrics(
+func (g *GraphCollector) collectRoutingPolicyMetrics(
 	ch chan<- prometheus.Metric, edge *lnrpc.ChannelEdge) {
 
 	pubkeys := []string{edge.Node1Pub, edge.Node2Pub}
@@ -152,7 +152,7 @@ func (g *graphCollector) collectRoutingPolicyMetrics(
 func init() {
 	metricsMtx.Lock()
 	collectors["graph"] = func(lnd lnrpc.LightningClient) prometheus.Collector {
-		return newGraphCollector(lnd)
+		return NewGraphCollector(lnd)
 	}
 	metricsMtx.Unlock()
 }

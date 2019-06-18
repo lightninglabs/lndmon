@@ -7,8 +7,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// peerCollector is a collector that keeps track of peer information.
-type peerCollector struct {
+// PeerCollector is a collector that keeps track of peer information.
+type PeerCollector struct {
 	peerCountDesc *prometheus.Desc
 
 	pingTimeDesc *prometheus.Desc
@@ -22,9 +22,11 @@ type peerCollector struct {
 	lnd lnrpc.LightningClient
 }
 
-func newPeerCollector(lnd lnrpc.LightningClient) *peerCollector {
+// NewPeerCollector returns a new instance of the PeerCollector for the target
+// lnd client.
+func NewPeerCollector(lnd lnrpc.LightningClient) *PeerCollector {
 	perPeerLabels := []string{"pubkey"}
-	return &peerCollector{
+	return &PeerCollector{
 		peerCountDesc: prometheus.NewDesc(
 			"lnd_peer_count", "total number of peers",
 			nil, nil,
@@ -60,7 +62,7 @@ func newPeerCollector(lnd lnrpc.LightningClient) *peerCollector {
 // last descriptor has been sent.
 //
 // NOTE: Part of the prometheus.Collector interface.
-func (p *peerCollector) Describe(ch chan<- *prometheus.Desc) {
+func (p *PeerCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- p.peerCountDesc
 
 	ch <- p.pingTimeDesc
@@ -75,7 +77,7 @@ func (p *peerCollector) Describe(ch chan<- *prometheus.Desc) {
 // Collect is called by the Prometheus registry when collecting metrics.
 //
 // NOTE: Part of the prometheus.Collector interface.
-func (p *peerCollector) Collect(ch chan<- prometheus.Metric) {
+func (p *PeerCollector) Collect(ch chan<- prometheus.Metric) {
 	listPeersResp, err := p.lnd.ListPeers(
 		context.Background(), &lnrpc.ListPeersRequest{},
 	)
@@ -116,7 +118,7 @@ func (p *peerCollector) Collect(ch chan<- prometheus.Metric) {
 func init() {
 	metricsMtx.Lock()
 	collectors["peer"] = func(lnd lnrpc.LightningClient) prometheus.Collector {
-		collector := newPeerCollector(lnd)
+		collector := NewPeerCollector(lnd)
 		return prometheus.Collector(collector)
 	}
 	metricsMtx.Unlock()
