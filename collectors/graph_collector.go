@@ -39,27 +39,27 @@ func NewGraphCollector(lnd lnrpc.LightningClient) *GraphCollector {
 		),
 
 		timelockDeltaDesc: prometheus.NewDesc(
-			"lnd_channels_timelock_delta",
+			"lnd_graph_timelock_delta",
 			"time lock delta for a channel routing policy",
 			labels, nil,
 		),
 		minHtlcMsatDesc: prometheus.NewDesc(
-			"lnd_channels_min_htlc_msat",
+			"lnd_graph_min_htlc_msat",
 			"min htlc for a channel routing policy in msat",
 			labels, nil,
 		),
 		feeBaseMsatDesc: prometheus.NewDesc(
-			"lnd_channels_fee_base_msat",
+			"lnd_graph_fee_base_msat",
 			"base fee for a channel routing policy in msat",
 			labels, nil,
 		),
 		feeRateMsatDesc: prometheus.NewDesc(
-			"lnd_channels_fee_rate_msat",
+			"lnd_graph_fee_rate_msat",
 			"fee rate for a channel routing policy in msat",
 			labels, nil,
 		),
 		maxHtlcMsatDesc: prometheus.NewDesc(
-			"lnd_channels_max_htlc_msat",
+			"lnd_graph_max_htlc_msat",
 			"max htlc for a channel routing policy in msat",
 			labels, nil,
 		),
