@@ -3,6 +3,10 @@
 `lndmon` is a tool for monitoring your lnd node using Prometheus and Grafana.
 ## Setup
 
+### Requirements
+* docker >= 18.09.6
+* docker-compose >= 1.24
+
 ### lnd
 - Build lnd with the build tag `monitoring`.
 
