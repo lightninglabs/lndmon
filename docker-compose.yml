@@ -11,7 +11,7 @@ services:
     command: --prometheus.listenaddr=0.0.0.0:9092 --lnd.network=$LND_NETWORK --lnd.host=$LND_HOST --lnd.macaroondir=/root/.lnd --lnd.tlspath=/root/.lnd/tls.cert
 
   prometheus:
-    image: prom/prometheus:v2.9.2
+    image: prom/prometheus:v2.10.0
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus-storage:/prometheus
