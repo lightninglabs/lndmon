@@ -15,7 +15,13 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus-storage:/prometheus
-    command: "--config.file=/etc/prometheus/prometheus.yml"
+    # Reasoning behind Prometheus command query flags:
+    # --query.max-samples: each Prometheus data sample is 16 bytes.
+    #                      16B * 31250000 = 1/2 GB.
+    # --query.max-concurrency: the max # of concurrent queries (default is 20).
+    # these parameters are intended to limit the amount of memory Prometheus
+    # uses for its queries to ~1GB, because it's sensitive to OOMs.
+    command: "--config.file=/etc/prometheus/prometheus.yml --query.max-samples=31250000 --query.max-concurrency=2"
     ports:
       - "9090:9090"
     depends_on:
