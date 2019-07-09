@@ -23,7 +23,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Prometheus",
-      "description": "Ping time per peer in microseconds.",
+      "description": "",
       "fill": 1,
       "gridPos": {
         "h": 8,
@@ -31,7 +31,7 @@
         "x": 0,
         "y": 0
       },
-      "id": 12,
+      "id": 14,
       "legend": {
         "avg": false,
         "current": false,
@@ -56,18 +56,24 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_peer_ping_time_microsecond",
+          "expr": "delta(lnd_peer_count[1m])",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "{{ pubkey }}",
+          "legendFormat": "change in # peers over 1 min",
           "refId": "A"
+        },
+        {
+          "expr": "",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "refId": "B"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Ping time (microseconds)",
+      "title": "Peer count delta (1m)",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -196,7 +202,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Prometheus",
-      "description": "Satoshis sent to each peer by pubkey.",
+      "description": "Ping time per peer in microseconds.",
       "fill": 1,
       "gridPos": {
         "h": 8,
@@ -204,7 +210,7 @@
         "x": 0,
         "y": 8
       },
-      "id": 10,
+      "id": 12,
       "legend": {
         "avg": false,
         "current": false,
@@ -229,7 +235,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_peer_sent_sat",
+          "expr": "lnd_peer_ping_time_microsecond",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{ pubkey }}",
@@ -240,7 +246,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Satoshis sent",
+      "title": "Ping time (microseconds)",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -370,7 +376,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Prometheus",
-      "description": "Number of bytes by each peer by pubkey.",
+      "description": "Satoshis sent to each peer by pubkey.",
       "fill": 1,
       "gridPos": {
         "h": 8,
@@ -378,7 +384,7 @@
         "x": 0,
         "y": 16
       },
-      "id": 6,
+      "id": 10,
       "legend": {
         "avg": false,
         "current": false,
@@ -403,7 +409,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_peer_sent_byte",
+          "expr": "lnd_peer_sent_sat",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{ pubkey }}",
@@ -414,7 +420,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Bytes sent",
+      "title": "Satoshis sent",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -508,6 +514,93 @@
       "timeRegions": [],
       "timeShift": null,
       "title": "Bytes received",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "description": "Number of bytes by each peer by pubkey.",
+      "fill": 1,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 6,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {},
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "lnd_peer_sent_byte",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "{{ pubkey }}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Bytes sent",
       "tooltip": {
         "shared": true,
         "sort": 0,
