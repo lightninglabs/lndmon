@@ -3,6 +3,10 @@
 `lndmon` is a tool for monitoring your lnd node using Prometheus and Grafana.
 ## Setup
 
+### Requirements
+* docker >= 18.09.6
+* docker-compose >= 1.24
+
 ### lnd
 - Build lnd with the build tag `monitoring`.
 
@@ -23,7 +27,8 @@ If you want to just run `lndmon` and view your monitoring dashboard locally, all
 ### nginx (optional: requires domain name)
 If you want to enable the built-in nginx proxy feature in order to access your Prometheus and Grafana dashboards remotely, these are the steps:
 1. In the `lndmon` repository, edit the `.env` file and fill in the email, FQDN, and (optionally) timezone fields.
-2. (Optional) Basic auth setup for your Prometheus dashboard:
+2. Ensure ports 80 and 443 are exposed on your server.
+3. (Optional) Basic auth setup for your Prometheus dashboard:
    - Install `apache2-utils` package.
    - Run `htpasswd -c nginx/etc/.htpasswd <YOUR_USERNAME>` and follow the prompts to enter and confirm your desired password.
    - In `lndmon/nginx/etc/service.conf`, uncomment the lines indicated in the file to enable basic auth.

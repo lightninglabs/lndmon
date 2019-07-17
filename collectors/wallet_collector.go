@@ -8,9 +8,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// walletCollector is a collector that will export metrics related to lnd's
+// WalletCollector is a collector that will export metrics related to lnd's
 // on-chain wallet. .
-type walletCollector struct {
+type WalletCollector struct {
 	lnd lnrpc.LightningClient
 
 	// We'll use two gauges to keep track of the total number of confirmed
@@ -32,10 +32,10 @@ type walletCollector struct {
 	txNumConfsDesc *prometheus.Desc
 }
 
-// newWalletCollector returns a new instance of the walletCollector.
-func newWalletCollector(lnd lnrpc.LightningClient) *walletCollector {
+// NewWalletCollector returns a new instance of the WalletCollector.
+func NewWalletCollector(lnd lnrpc.LightningClient) *WalletCollector {
 	txLabels := []string{"tx_hash"}
-	return &walletCollector{
+	return &WalletCollector{
 		lnd: lnd,
 		numUtxosConfDesc: prometheus.NewDesc(
 			"lnd_utxos_count_confirmed_total",
@@ -78,7 +78,7 @@ func newWalletCollector(lnd lnrpc.LightningClient) *walletCollector {
 // last descriptor has been sent.
 //
 // NOTE: Part of the prometheus.Collector interface.
-func (u *walletCollector) Describe(ch chan<- *prometheus.Desc) {
+func (u *WalletCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- u.numUtxosConfDesc
 	ch <- u.numUtxosUnconfDesc
 	ch <- u.minUtxoSizeDesc
@@ -92,7 +92,7 @@ func (u *walletCollector) Describe(ch chan<- *prometheus.Desc) {
 // Collect is called by the Prometheus registry when collecting metrics.
 //
 // NOTE: Part of the prometheus.Collector interface.
-func (u *walletCollector) Collect(ch chan<- prometheus.Metric) {
+func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 	// First, we'll fetch information w.r.t all UTXOs in the wallet. The
 	// large max confs value means we'll capture all the UTXOs.
 	req := &lnrpc.ListUnspentRequest{
@@ -192,7 +192,7 @@ func (u *walletCollector) Collect(ch chan<- prometheus.Metric) {
 func init() {
 	metricsMtx.Lock()
 	collectors["wallet"] = func(lnd lnrpc.LightningClient) prometheus.Collector {
-		return newWalletCollector(lnd)
+		return NewWalletCollector(lnd)
 	}
 	metricsMtx.Unlock()
 }

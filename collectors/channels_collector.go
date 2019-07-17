@@ -8,8 +8,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// channelsCollector is a collector that keeps track of channel infromation.
-type channelsCollector struct {
+// ChannelsCollector is a collector that keeps track of channel infromation.
+type ChannelsCollector struct {
 	channelBalanceDesc        *prometheus.Desc
 	pendingChannelBalanceDesc *prometheus.Desc
 
@@ -35,11 +35,11 @@ type channelsCollector struct {
 	lnd lnrpc.LightningClient
 }
 
-// newChannelsCollector returns a new instance of the channelsCollector for the
+// NewChannelsCollector returns a new instance of the ChannelsCollector for the
 // target lnd client.
-func newChannelsCollector(lnd lnrpc.LightningClient) *channelsCollector {
+func NewChannelsCollector(lnd lnrpc.LightningClient) *ChannelsCollector {
 	labels := []string{"chan_id"}
-	return &channelsCollector{
+	return &ChannelsCollector{
 		channelBalanceDesc: prometheus.NewDesc(
 			"lnd_channels_open_balance_sat",
 			"total balance of channels in satoshis",
@@ -135,7 +135,7 @@ func newChannelsCollector(lnd lnrpc.LightningClient) *channelsCollector {
 // last descriptor has been sent.
 //
 // NOTE: Part of the prometheus.Collector interface.
-func (c *channelsCollector) Describe(ch chan<- *prometheus.Desc) {
+func (c *ChannelsCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.channelBalanceDesc
 	ch <- c.pendingChannelBalanceDesc
 
@@ -164,7 +164,7 @@ func (c *channelsCollector) Describe(ch chan<- *prometheus.Desc) {
 // Collect is called by the Prometheus registry when collecting metrics.
 //
 // NOTE: Part of the prometheus.Collector interface.
-func (c *channelsCollector) Collect(ch chan<- prometheus.Metric) {
+func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 	// First, based on the channel balance, we'll export the total and
 	// pending channel balances.
 	chanBalResp, err := c.lnd.ChannelBalance(
@@ -279,7 +279,7 @@ func (c *channelsCollector) Collect(ch chan<- prometheus.Metric) {
 func init() {
 	metricsMtx.Lock()
 	collectors["channels"] = func(lnd lnrpc.LightningClient) prometheus.Collector {
-		return newChannelsCollector(lnd)
+		return NewChannelsCollector(lnd)
 	}
 	metricsMtx.Unlock()
 }
