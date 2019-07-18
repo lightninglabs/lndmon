@@ -24,6 +24,7 @@ services:
     command: "--config.file=/etc/prometheus/prometheus.yml --query.max-samples=31250000 --query.max-concurrency=2"
     ports:
       - "9090:9090"
+    restart: always
     depends_on:
       - lndmon
 
