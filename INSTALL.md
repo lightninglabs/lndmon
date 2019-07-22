@@ -1,13 +1,22 @@
-# lndmon
+# Table of Contents
+1. [Setup](#setup)
+   1. [Requirements](#requirements)
+   2. [Lnd](#lnd)
+   3. [Lndmon](#lndmon)
+   4. [Nginx (optional: requires domain name)](#nginx-optional-requires-domain-name)
+2. [Usage](#usage)
+    1. [Option 1: Nginx Proxy Usage](#option-1-nginx-proxy-usage)
+    2. [Option 2: Local Usage](#option-2-local-usage)
+    3. [Connecting to Remote Lnd Node](#connecting-to-remote-lnd-node)
+    4. [Customizing Grafana Metrics](#customizing-grafana-metrics)
 
-`lndmon` is a tool for monitoring your lnd node using Prometheus and Grafana.
 ## Setup
 
 ### Requirements
 * docker >= 18.09.6
 * docker-compose >= 1.24
 
-### lnd
+### Lnd
 - Build lnd with the build tag `monitoring`.
 
     * Utilizing the `monitoring` build tag requires building lnd from source. To build lnd from source, follow the instructions [here](https://github.com/lightningnetwork/lnd/blob/master/docs/INSTALL.md) except instead of running `make && make install`, run `make && make install tags=monitoring`.
@@ -21,10 +30,10 @@
    * If your docker interface has a non-default IP, replace `172.17.0.1` with the docker interface's IP.
 - Start lnd *before* `lndmon`.
 
-### lndmon
+### Lndmon
 If you want to just run `lndmon` and view your monitoring dashboard locally, all that is needed for setup is to clone the repository and install `docker` + `docker-compose`.
 
-### nginx (optional: requires domain name)
+### Nginx (optional: requires domain name)
 If you want to enable the built-in nginx proxy feature in order to access your Prometheus and Grafana dashboards remotely, these are the steps:
 1. In the `lndmon` repository, edit the `.env` file and fill in the email, FQDN, and (optionally) timezone fields.
 2. Ensure ports 80 and 443 are exposed on your server.
@@ -41,7 +50,15 @@ Note that these steps will result in TLS certs being generated for your domain, 
 * Uncomment the lines beginning with `- SSL_` in `lndmon/docker-compose.nginx.yml`.
    
 ## Usage
-### local usage
+### Option 1: Nginx Proxy Usage
+These instructions assume you've gone through the setup process for `nginx` specified above.
+1. `docker-compose -f docker-compose.yml -f docker-compose.nginx.yml up`
+
+   This will result in the automatic generation of TLS certificates through Let's Encrypt if they haven't been generated already, or their renewal if the current certs have expired.
+2. Grafana is located at `https://<YOUR_DOMAIN>/grafana/`
+3. Prometheus's expression browser is located at `https://<YOUR_DOMAIN>/prometheus/graph`.
+
+### Option 2: Local Usage
 1. `docker-compose up` from the `lndmon` repository.
     * If you get the error "transport: Error while dialing dial tcp 172.17.0.1:10009: i/o timeout", your docker interface may not have the default IP. Make sure your docker interface's IP matches the IP for `LND_HOST` in `.env` and the lnd target's IP in `prometheus.yml`.
 2. Access Grafana dashboard: 
@@ -61,18 +78,10 @@ Note that these steps will result in TLS certs being generated for your domain, 
    ```
 Prometheus's expression browser is located at `http://<PROMETHEUS_IP>:9090/graph`.
 
-### nginx proxy usage
-These instructions assume you've gone through the setup process for `nginx` specified above.
-1. `docker-compose -f docker-compose.yml -f docker-compose.nginx.yml up`
-
-   This will result in the automatic generation of TLS certificates through Let's Encrypt if they haven't been generated already, or their renewal if the current certs have expired.
-2. Grafana is located at `https://<YOUR_DOMAIN>/grafana/`
-3. Prometheus's expression browser is located at `https://<YOUR_DOMAIN>/prometheus/graph`.
-
-### connecting to remote lnd node
+### Connecting to Remote Lnd Node
 * Edit the `lndmon/.env` `LND_HOST` variable to match your lnd node's IP and port.
 * Ensure the other lnd variables are also up-to-date in `lndmon/.env`.
 * Run lnd with the `--tlsextraip=<IP>` flag.
 
-### customizing Grafana metrics
+### Customizing Grafana Metrics
 `lndmon`'s Grafana instance comes with a set of basic dashboards. Add additional dashboards by clicking the `+' sign on the left.
