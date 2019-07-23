@@ -36,6 +36,11 @@ services:
       - ./grafana/provisioning/:/etc/grafana/provisioning/
       - grafana-storage:/var/lib/grafana
 
+  post_start:
+    build: ./post_start
+    depends_on:
+      - grafana
+
 volumes:
   grafana-storage:
   prometheus-storage:
