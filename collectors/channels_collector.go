@@ -38,7 +38,9 @@ type ChannelsCollector struct {
 // NewChannelsCollector returns a new instance of the ChannelsCollector for the
 // target lnd client.
 func NewChannelsCollector(lnd lnrpc.LightningClient) *ChannelsCollector {
-	labels := []string{"chan_id"}
+	// Our set of labels, status should either be active or inactive. The
+	// initiator is "true" if we are the initiator, and "false" otherwise.
+	labels := []string{"chan_id", "status", "initiator"}
 	return &ChannelsCollector{
 		channelBalanceDesc: prometheus.NewDesc(
 			"lnd_channels_open_balance_sat",
@@ -217,61 +219,84 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
+	// statusLabel is a small helper function returns the proper status
+	// label for a given channel.
+	statusLabel := func(c *lnrpc.Channel) string {
+		if c.Active {
+			return "active"
+		}
+
+		return "inactive"
+	}
+
+	// initiatorLabel is a small helper function that returns the proper
+	// "initiator" label for a given channel.
+	initiatorLabel := func(c *lnrpc.Channel) string {
+		if c.Initiator {
+			return "true"
+		}
+
+		return "false"
+	}
+
 	for _, channel := range listChannelsResp.Channels {
+		status := statusLabel(channel)
+		initiator := initiatorLabel(channel)
+
 		ch <- prometheus.MustNewConstMetric(
 			c.incomingChanSatDesc, prometheus.GaugeValue,
 			float64(channel.RemoteBalance),
-			strconv.Itoa(int(channel.ChanId)),
+			strconv.Itoa(int(channel.ChanId)), status, initiator,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.outgoingChanSatDesc, prometheus.GaugeValue,
 			float64(channel.LocalBalance),
-			strconv.Itoa(int(channel.ChanId)),
+			strconv.Itoa(int(channel.ChanId)), status, initiator,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.numPendingHTLCsDesc, prometheus.GaugeValue,
 			float64(len(channel.PendingHtlcs)),
-			strconv.Itoa(int(channel.ChanId)),
+			strconv.Itoa(int(channel.ChanId)), status, initiator,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.satsSentDesc, prometheus.GaugeValue,
 			float64(channel.TotalSatoshisSent),
-			strconv.Itoa(int(channel.ChanId)),
+			strconv.Itoa(int(channel.ChanId)), status, initiator,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.satsRecvDesc, prometheus.GaugeValue,
 			float64(channel.TotalSatoshisReceived),
-			strconv.Itoa(int(channel.ChanId)),
+			strconv.Itoa(int(channel.ChanId)), status, initiator,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.numUpdatesDesc, prometheus.GaugeValue,
 			float64(channel.NumUpdates),
-			strconv.Itoa(int(channel.ChanId)),
+			strconv.Itoa(int(channel.ChanId)), status, initiator,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.csvDelayDesc, prometheus.GaugeValue,
 			float64(channel.CsvDelay),
-			strconv.Itoa(int(channel.ChanId)),
+			strconv.Itoa(int(channel.ChanId)), status, initiator,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.unsettledBalanceDesc, prometheus.GaugeValue,
 			float64(channel.UnsettledBalance),
-			strconv.Itoa(int(channel.ChanId)),
+			strconv.Itoa(int(channel.ChanId)), status, initiator,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.feePerKwDesc, prometheus.GaugeValue,
 			float64(channel.FeePerKw),
-			strconv.Itoa(int(channel.ChanId)),
+			strconv.Itoa(int(channel.ChanId)), status, initiator,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.commitWeightDesc, prometheus.GaugeValue,
 			float64(channel.CommitWeight),
-			strconv.Itoa(int(channel.ChanId)),
+			strconv.Itoa(int(channel.ChanId)), status, initiator,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.commitFeeDesc, prometheus.GaugeValue,
 			float64(channel.CommitFee),
-			strconv.Itoa(int(channel.ChanId)),
+			strconv.Itoa(int(channel.ChanId)), status, initiator,
 		)
 	}
 }
