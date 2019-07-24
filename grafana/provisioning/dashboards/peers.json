@@ -314,7 +314,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(lnd_peer_recv_sat)",
+          "expr": "sum(lnd_peer_recv_byte)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "total_recv_bytes",
@@ -765,5 +765,5 @@
   "timezone": "",
   "title": "Peer State",
   "uid": "WZoVj0HZk",
-  "version": 8
+  "version": 9
 }
