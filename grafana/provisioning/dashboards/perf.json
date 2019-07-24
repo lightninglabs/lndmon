@@ -15,7 +15,7 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 9,
+  "id": 10,
   "links": [],
   "panels": [
     {
@@ -56,7 +56,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "irate(process_cpu_seconds_total[5m])*10",
+          "expr": "irate(process_cpu_seconds_total{job=\"lnd\"}[5m])*10",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "cpu_usage",
@@ -142,14 +142,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "process_resident_memory_bytes",
+          "expr": "process_resident_memory_bytes{job=\"lnd\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "res_mem",
           "refId": "A"
         },
         {
-          "expr": "process_virtual_memory_bytes",
+          "expr": "process_virtual_memory_bytes{job=\"lnd\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "virt_mem",
@@ -235,7 +235,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "go_gc_duration_seconds",
+          "expr": "go_gc_duration_seconds{job=\"lnd\"}",
           "format": "heatmap",
           "instant": false,
           "intervalFactor": 1,
@@ -335,21 +335,21 @@
           "refId": "B"
         },
         {
-          "expr": "go_memstats_heap_inuse_bytes",
+          "expr": "go_memstats_heap_inuse_bytes{job=\"lnd\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "heap_inuse_bytes",
           "refId": "C"
         },
         {
-          "expr": "go_memstats_heap_sys_bytes",
+          "expr": "go_memstats_heap_sys_bytes{job=\"lnd\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "heap_sys_bytes",
           "refId": "D"
         },
         {
-          "expr": "go_memstats_heap_released_bytes",
+          "expr": "go_memstats_heap_released_bytes{job=\"lnd\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "heap_release_bytes",
@@ -435,7 +435,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "go_memstats_heap_objects",
+          "expr": "go_memstats_heap_objects{job=\"lnd\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "num_heap_objects",
@@ -521,7 +521,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "go_goroutines",
+          "expr": "go_goroutines{job=\"lnd\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "num_goroutines",
@@ -607,7 +607,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "process_open_fds",
+          "expr": "process_open_fds{job=\"lnd\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "open_fds",
@@ -664,8 +664,8 @@
     "list": []
   },
   "time": {
-    "from": "2019-07-24T02:33:27.758Z",
-    "to": "2019-07-24T02:39:44.654Z"
+    "from": "now-3h",
+    "to": "now"
   },
   "timepicker": {
     "refresh_intervals": [
@@ -695,5 +695,5 @@
   "timezone": "",
   "title": "Go Runtime + Performance",
   "uid": "VZPXYaNZk",
-  "version": 5
+  "version": 2
 }
