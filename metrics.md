@@ -23,11 +23,18 @@
 ## Graph Metrics
 * `lnd_graph_edges_count`: total number of edges in the graph
 * `lnd_graph_nodes_count`: total number of nodes in the graph
-* `lnd_graph_timelock_delta`: time lock delta for a channel routing policy
-* `lnd_graph_min_htlc_msat`: min htlc for a channel routing policy in msat
-* `lnd_graph_fee_base_msat`: base fee for a channel routing policy in msat
-* `lnd_graph_fee_rate_msat`: fee rate for a channel routing policy in msat
-* `lnd_graph_max_htlc_msat`: max htlc for a channel routing policy in msat
+* `lnd_graph_outdegree_avg`: the avg out degreee of nodes in the network
+* `lnd_graph_outdegree_max`: the max out degree of nodes in the network
+* `lnd_graph_chan_capacity_sat`: the total capacity of the network in satoshis
+* `lnd_graph_chan_size_avg`: the avg channel size in the network
+* `lnd_graph_chan_size_min`: the smallest channel in the network
+* `lnd_graph_chan_size_max`: the largest channel in the network
+* `lnd_graph_chan_size_median`: the median channel size in the network
+* `lnd_graph_timelock_delta_{min, max, avg, median}`: the min/max/avg/median time lock delta across all chanenls
+* `lnd_graph_min_htlc_msat_{min, max, avg, median}`: the min/max/avg/median min htlc across all channels
+* `lnd_graph_fee_base_msat_{min, max, avg, median}`: the min/max/avg/median base fee across all channels
+* `lnd_graph_fee_rate_msat_{min, max, avg, median}`: the min/max/avg/median fee rate across all channels
+* `lnd_graph_max_htlc_msat_{min, max, avg, median}`: the min/max/avg/median max htlc across all channels
  
 ## Peer Metrics
 * `lnd_peer_count`: total number of peers
