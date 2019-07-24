@@ -132,6 +132,8 @@ github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
 github.com/lightninglabs/gozmq v0.0.0-20180324010646-462a8a753885 h1:fTLuPUkaKIIV0+gA1IxiBDvDxtF8tzpSF6N6NfFGmsU=
 github.com/lightninglabs/gozmq v0.0.0-20180324010646-462a8a753885/go.mod h1:KUh15naRlx/TmUMFS/p4JJrCrE6F7RGF7rsnvuu45E4=
+github.com/lightninglabs/loop v0.2.0-alpha h1:PKn7IaulC1o9vCLO9TebBlDnudAAPAXPDb0GaHYLndU=
+github.com/lightninglabs/loop v0.2.0-alpha/go.mod h1:qHZeOvQizpJlXD6UwH0TO+4cxcsSiopSjuU3bm1DWAc=
 github.com/lightninglabs/neutrino v0.0.0-20181017011010-4d6069299130/go.mod h1:KJq43Fu9ceitbJsSXMILcT4mGDNI/crKmPIkDOZXFyM=
 github.com/lightninglabs/neutrino v0.0.0-20190213031021-ae4583a89cfb/go.mod h1:g6cMQd+hfAU8pQTJAdjm6/EQREhupyd22f+CL0qYFOE=
 github.com/lightninglabs/neutrino v0.0.0-20190313035638-e1ad4c33fb18/go.mod h1:v6tz6jbuAubTrRpX8ke2KH9sJxml8KlPQTKgo9mAp1Q=
@@ -189,8 +191,6 @@ github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXf
 github.com/tv42/zbase32 v0.0.0-20160707012821-501572607d02/go.mod h1:tHlrkM198S068ZqfrO6S8HsoJq2bF3ETfTL+kt4tInY=
 github.com/urfave/cli v1.18.0/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijbERA=
 github.com/urfave/cli v1.20.0/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijbERA=
-github.com/valentinewallace/loop v0.1.1-alpha.0.20190606225725-8311d70cbf8b h1:kpo3rYvUDN64XA81VRo54yjLOd/FDULKiW5qWIUW5TM=
-github.com/valentinewallace/loop v0.1.1-alpha.0.20190606225725-8311d70cbf8b/go.mod h1:qHZeOvQizpJlXD6UwH0TO+4cxcsSiopSjuU3bm1DWAc=
 go.etcd.io/bbolt v1.3.0/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.etcd.io/bbolt v1.3.2 h1:Z/90sZLPOeCy2PwprqkFa25PdkusRzaj9P8zm/KNyvk=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
