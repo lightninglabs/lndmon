@@ -142,10 +142,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "stdvar(lnd_peer_count)",
+          "expr": "deriv(lnd_peer_count[30s])",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "peer_count_variance",
+          "legendFormat": "peer_count_deriv",
           "refId": "A"
         }
       ],
@@ -153,7 +153,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Peer Count Variance",
+      "title": "Peer Flappiness (30s)",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -765,5 +765,5 @@
   "timezone": "",
   "title": "Peer State",
   "uid": "WZoVj0HZk",
-  "version": 9
+  "version": 12
 }
