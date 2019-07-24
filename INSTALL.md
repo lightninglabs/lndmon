@@ -81,6 +81,7 @@ Prometheus's expression browser is located at `http://<PROMETHEUS_IP>:9090/graph
 ### Connecting to Remote Lnd Node
 * Edit the `lndmon/.env` `LND_HOST` variable to match your lnd node's IP and port.
 * Ensure the other lnd variables are also up-to-date in `lndmon/.env`.
+* Edit `prometheus.yml` `lnd` `targets` section to match your IP.
 * Run lnd with the `--tlsextraip=<IP>` flag.
 
 ### Customizing Grafana Metrics
