@@ -143,17 +143,29 @@
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "lnd_chain_block_height",
+          "yaxis": 2
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_graph_chan_capacity_sat ",
+          "expr": "lnd_graph_chan_capacity_sat/1e8",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "total_chans_sat",
+          "legendFormat": "total_chans_btc",
           "refId": "A"
+        },
+        {
+          "expr": "lnd_chain_block_height",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "lnd_chain_block_height",
+          "refId": "B"
         }
       ],
       "thresholds": [],
@@ -184,7 +196,8 @@
           "show": true
         },
         {
-          "format": "short",
+          "decimals": 0,
+          "format": "none",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -315,7 +328,12 @@
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "lnd_chain_block_height",
+          "yaxis": 2
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
@@ -326,6 +344,13 @@
           "intervalFactor": 1,
           "legendFormat": "channel_count",
           "refId": "A"
+        },
+        {
+          "expr": "lnd_chain_block_height",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "lnd_chain_block_height",
+          "refId": "B"
         }
       ],
       "thresholds": [],
@@ -348,7 +373,8 @@
       },
       "yaxes": [
         {
-          "format": "short",
+          "decimals": 0,
+          "format": "none",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -356,7 +382,8 @@
           "show": true
         },
         {
-          "format": "short",
+          "decimals": 0,
+          "format": "none",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -874,5 +901,5 @@
   "timezone": "",
   "title": "Network Stats",
   "uid": "vTkye0NZz",
-  "version": 4
+  "version": 5
 }
