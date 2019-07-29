@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/lightninglabs/lndmon/collectors"
+	"github.com/lightninglabs/lndmon/health"
 	"github.com/lightninglabs/loop/lndclient"
 )
 
@@ -44,6 +45,13 @@ func start() error {
 	exporter := collectors.NewPrometheusExporter(cfg.Prometheus, lnd)
 	if err := exporter.Start(); err != nil {
 		return err
+	}
+
+	if cfg.Health.Active {
+		healthChecker := health.NewHealthChecker(cfg.Health, lnd)
+		if err := healthChecker.Start(); err != nil {
+			return err
+		}
 	}
 
 	// Wait for a signal to exit.

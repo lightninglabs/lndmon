@@ -2,6 +2,7 @@ package lndmon
 
 import (
 	"github.com/lightninglabs/lndmon/collectors"
+	"github.com/lightninglabs/lndmon/health"
 )
 
 type lndConfig struct {
@@ -26,6 +27,9 @@ type config struct {
 	// Lnd refers to the user's lnd configuration properties that we need to
 	// connect to it.
 	Lnd *lndConfig `group:"lnd" namespace:"lnd"`
+
+	// Health defines the parameters for checking the lnd connection is healthy
+	Health *health.HealthConfig `group:"health" namespace:"health"`
 }
 
 var defaultConfig = config{
@@ -34,6 +38,7 @@ var defaultConfig = config{
 		Host:    "localhost:10009",
 		Network: "mainnet",
 	},
+	Health: health.DefaultConfig(),
 }
 
 var (
