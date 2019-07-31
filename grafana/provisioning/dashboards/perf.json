@@ -321,14 +321,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "go_memstats_heap_alloc_bytes",
+          "expr": "go_memstats_heap_alloc_bytes{job=\"lnd\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "heap_alloc_bytes",
           "refId": "A"
         },
         {
-          "expr": "go_memstats_heap_idle_bytes",
+          "expr": "go_memstats_heap_idle_bytes{job=\"lnd\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "heap_idle_bytes",
