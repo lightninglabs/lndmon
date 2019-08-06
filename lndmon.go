@@ -2,11 +2,11 @@ package lndmon
 
 import (
 	"fmt"
-	flags "github.com/jessevdk/go-flags"
 	"os"
 	"os/signal"
 	"syscall"
 
+	flags "github.com/jessevdk/go-flags"
 	"github.com/lightninglabs/lndmon/collectors"
 	"github.com/lightninglabs/loop/lndclient"
 )
@@ -22,12 +22,11 @@ func Main() {
 }
 
 func start() error {
-	_, err := flags.Parse(&cfg)
-	if err != nil {
+	if _, err := flags.Parse(&cfg); err != nil {
 		if e, ok := err.(*flags.Error); ok && e.Type == flags.ErrHelp {
-		} else {
-			return err
+			return nil
 		}
+		return err
 	}
 
 	// Initialize our lnd client.
