@@ -68,7 +68,7 @@ These instructions assume you've gone through the setup process for `nginx` spec
    ```
    docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' lndmon_grafana_1
    ```
- Grafana's dashboard is located at `http://<GRAFANA_IP>:3000/`
+ Grafana's dashboard is located at `http://<GRAFANA_IP>:3000/`. The default password for the admin user is also admin (you can change it after the first login).
 3. Access Prometheus expression browser:
    
    Get Prometheus's IP:
