@@ -56,7 +56,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "irate(process_cpu_seconds_total{job=\"lnd\"}[5m])*10",
+          "expr": "irate(process_cpu_seconds_total{job=\"lnd\"}[1m])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "cpu_usage",
