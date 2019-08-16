@@ -37,7 +37,7 @@ func NewHealthChecker(cfg *HealthConfig, lnd lnrpc.LightningClient) *HealthCheck
 }
 
 func (hc *HealthChecker) Start() error {
-	// We launch a HTTP server that can serve healt check requests
+	// We launch a HTTP server that can serve health check requests
 	go func() {
 		http.Handle(hc.cfg.Path, hc)
 		http.ListenAndServe(hc.cfg.ListenAddr, nil)
