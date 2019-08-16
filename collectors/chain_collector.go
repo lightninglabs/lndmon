@@ -11,6 +11,7 @@ import (
 type ChainCollector struct {
 	bestBlockHeight    *prometheus.Desc
 	bestBlockTimestamp *prometheus.Desc
+	syncedToChain      *prometheus.Desc
 
 	lnd lnrpc.LightningClient
 }
@@ -28,6 +29,11 @@ func NewChainCollector(lnd lnrpc.LightningClient) *ChainCollector {
 			"best block timestamp from lnd",
 			nil, nil,
 		),
+		syncedToChain: prometheus.NewDesc(
+			"lnd_chain_synced",
+			"lnd is synced to the chain",
+			nil, nil,
+		),
 		lnd: lnd,
 	}
 }
@@ -40,6 +46,7 @@ func NewChainCollector(lnd lnrpc.LightningClient) *ChainCollector {
 func (c *ChainCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.bestBlockHeight
 	ch <- c.bestBlockTimestamp
+	ch <- c.syncedToChain
 }
 
 // Collect is called by the Prometheus registry when collecting metrics.
@@ -61,6 +68,11 @@ func (c *ChainCollector) Collect(ch chan<- prometheus.Metric) {
 		c.bestBlockTimestamp, prometheus.GaugeValue,
 		float64(resp.BestHeaderTimestamp),
 	)
+
+	ch <- prometheus.MustNewConstMetric(
+		c.syncedToChain, prometheus.GaugeValue,
+		float64(boolToInt(resp.SyncedToChain)),
+	)
 }
 
 func init() {
@@ -69,4 +81,11 @@ func init() {
 		return NewChainCollector(lnd)
 	}
 	metricsMtx.Unlock()
+}
+
+func boolToInt(arg bool) uint8 {
+	if arg {
+		return 1
+	}
+	return 0
 }
