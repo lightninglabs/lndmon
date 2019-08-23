@@ -865,7 +865,7 @@
   ],
   "schemaVersion": 18,
   "style": "dark",
-  "tags": [],
+  "tags": ["ligithning-network"],
   "templating": {
     "list": []
   },
