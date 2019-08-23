@@ -56,14 +56,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_graph_nodes_count",
+          "expr": "lnd_graph_nodes_count{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "num_graph_nodes",
           "refId": "A"
         },
         {
-          "expr": "lnd_graph_edges_count",
+          "expr": "lnd_graph_edges_count{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "num_graph_edges",
@@ -154,7 +154,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_graph_chan_capacity_sat/1e8",
+          "expr": "lnd_graph_chan_capacity_sat{namespace=\"$namespace\",job=\"$job\"}/1e8",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "total_chans_btc",
@@ -248,7 +248,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_graph_nodes_count",
+          "expr": "lnd_graph_nodes_count{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "num_nodes",
@@ -339,7 +339,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_graph_edges_count",
+          "expr": "lnd_graph_edges_count{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "channel_count",
@@ -434,14 +434,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_graph_max_htlc_msat_avg / 1000",
+          "expr": "lnd_graph_max_htlc_msat_avg{namespace=\"$namespace\",job=\"$job\"} / 1000",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "max_htlc_avg",
           "refId": "A"
         },
         {
-          "expr": "lnd_graph_max_htlc_msat_median / 1000",
+          "expr": "lnd_graph_max_htlc_msat_median{namespace=\"$namespace\",job=\"$job\"} / 1000",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "max_htlc_median",
@@ -527,14 +527,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_graph_min_htlc_msat_avg / 1000",
+          "expr": "lnd_graph_min_htlc_msat_avg{namespace=\"$namespace\",job=\"$job\"} / 1000",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "min_htlc_sat",
           "refId": "A"
         },
         {
-          "expr": "lnd_graph_min_htlc_msat_median / 1000",
+          "expr": "lnd_graph_min_htlc_msat_median{namespace=\"$namespace\",job=\"$job\"} / 1000",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "median_min_htlc",
@@ -620,14 +620,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_graph_timelock_delta_median",
+          "expr": "lnd_graph_timelock_delta_median{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "time_lock_delta_median",
           "refId": "A"
         },
         {
-          "expr": "lnd_graph_timelock_delta_avg",
+          "expr": "lnd_graph_timelock_delta_avg{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "time_lock_delta_avg",
@@ -713,14 +713,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_graph_outdegree_max",
+          "expr": "lnd_graph_outdegree_max{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "max_out_degree",
           "refId": "A"
         },
         {
-          "expr": "lnd_graph_outdegree_avg",
+          "expr": "lnd_graph_outdegree_avg{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "avg_out_degree",
@@ -806,14 +806,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "(lnd_graph_fee_rate_msat_avg / 1000000) ",
+          "expr": "(lnd_graph_fee_rate_msat_avg{namespace=\"$namespace\",job=\"$job\"} / 1000000) ",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "avg_fee_rate",
           "refId": "A"
         },
         {
-          "expr": "lnd_graph_fee_rate_msat_median / 1000000",
+          "expr": "lnd_graph_fee_rate_msat_median{namespace=\"$namespace\",job=\"$job\"} / 1000000",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "median_fee_rate",

@@ -56,7 +56,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "irate(process_cpu_seconds_total{job=\"$job\"}[1m])",
+          "expr": "irate(process_cpu_seconds_total{namespace=\"$namespace\",job=\"$job\"}[1m])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "cpu_usage",
@@ -142,14 +142,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "process_resident_memory_bytes{job=\"$job\"}",
+          "expr": "process_resident_memory_bytes{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "res_mem",
           "refId": "A"
         },
         {
-          "expr": "process_virtual_memory_bytes{job=\"$job\"}",
+          "expr": "process_virtual_memory_bytes{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "virt_mem",
@@ -235,7 +235,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "go_gc_duration_seconds{job=\"$job\"}",
+          "expr": "go_gc_duration_seconds{namespace=\"$namespace\",job=\"$job\"}",
           "format": "heatmap",
           "instant": false,
           "intervalFactor": 1,
@@ -321,35 +321,35 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "go_memstats_heap_alloc_bytes{job=\"$job\"}",
+          "expr": "go_memstats_heap_alloc_bytes{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "heap_alloc_bytes",
           "refId": "A"
         },
         {
-          "expr": "go_memstats_heap_idle_bytes{job=\"$job\"}",
+          "expr": "go_memstats_heap_idle_bytes{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "heap_idle_bytes",
           "refId": "B"
         },
         {
-          "expr": "go_memstats_heap_inuse_bytes{job=\"$job\"}",
+          "expr": "go_memstats_heap_inuse_bytes{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "heap_inuse_bytes",
           "refId": "C"
         },
         {
-          "expr": "go_memstats_heap_sys_bytes{job=\"$job\"}",
+          "expr": "go_memstats_heap_sys_bytes{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "heap_sys_bytes",
           "refId": "D"
         },
         {
-          "expr": "go_memstats_heap_released_bytes{job=\"$job\"}",
+          "expr": "go_memstats_heap_released_bytes{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "heap_release_bytes",
@@ -435,7 +435,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "go_memstats_heap_objects{job=\"$job\"}",
+          "expr": "go_memstats_heap_objects{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "num_heap_objects",
@@ -521,7 +521,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "go_goroutines{job=\"$job\"}",
+          "expr": "go_goroutines{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "num_goroutines",
@@ -607,7 +607,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "process_open_fds{job=\"$job\"}",
+          "expr": "process_open_fds{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "open_fds",

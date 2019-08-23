@@ -56,14 +56,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_wallet_balance_confirmed_sat",
+          "expr": "lnd_wallet_balance_confirmed_sat{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "conf_sat",
           "refId": "A"
         },
         {
-          "expr": "lnd_wallet_balance_unconfirmed_sat",
+          "expr": "lnd_wallet_balance_unconfirmed_sat{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "unconf_sat",
@@ -149,14 +149,14 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_utxos_count_confirmed_total",
+          "expr": "lnd_utxos_count_confirmed_total{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "num_conf_utxos",
           "refId": "A"
         },
         {
-          "expr": "lnd_utxos_count_unconfirmed_total",
+          "expr": "lnd_utxos_count_unconfirmed_total{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "num_unconf_utxos",
@@ -242,21 +242,21 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_utxos_sizes_avg_sat",
+          "expr": "lnd_utxos_sizes_avg_sat{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "avg_utxo_size_sat",
           "refId": "A"
         },
         {
-          "expr": "lnd_utxos_sizes_max_sat",
+          "expr": "lnd_utxos_sizes_max_sat{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "max_utxo_size_sat",
           "refId": "B"
         },
         {
-          "expr": "lnd_utxos_sizes_min_sat",
+          "expr": "lnd_utxos_sizes_min_sat{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "min_utxo_size_sat",
@@ -342,7 +342,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_chain_block_height",
+          "expr": "lnd_chain_block_height{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "block_height",

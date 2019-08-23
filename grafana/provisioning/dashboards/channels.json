@@ -56,21 +56,21 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_channels_pending_total",
+          "expr": "lnd_channels_pending_total{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "num_pending_chans",
           "refId": "A"
         },
         {
-          "expr": "lnd_channels_active_total",
+          "expr": "lnd_channels_active_total{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "num_active_chans",
           "refId": "B"
         },
         {
-          "expr": "lnd_channels_inactive_total",
+          "expr": "lnd_channels_inactive_total{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "num_inactive_chans",
@@ -156,28 +156,28 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_channels_pending_balance_sat > 0",
+          "expr": "lnd_channels_pending_balance_sat{namespace=\"$namespace\",job=\"$job\"} > 0",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "pending_open_sat",
           "refId": "A"
         },
         {
-          "expr": "lnd_channels_open_balance_sat",
+          "expr": "lnd_channels_open_balance_sat{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "channels_sat",
           "refId": "B"
         },
         {
-          "expr": "lnd_wallet_balance_unconfirmed_sat > 0",
+          "expr": "lnd_wallet_balance_unconfirmed_sat{namespace=\"$namespace\",job=\"$job\"} > 0",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "unconf_balance_sat",
           "refId": "C"
         },
         {
-          "expr": "lnd_wallet_balance_confirmed_sat",
+          "expr": "lnd_wallet_balance_confirmed_sat{namespace=\"$namespace\",job=\"$job\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "conf_balance_sat",
@@ -263,7 +263,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(lnd_channels_bandwidth_outgoing_sat)",
+          "expr": "sum(lnd_channels_bandwidth_outgoing_sat{namespace=\"$namespace\",job=\"$job\"})",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -271,7 +271,7 @@
           "refId": "A"
         },
         {
-          "expr": "sum(lnd_channels_bandwidth_incoming_sat)",
+          "expr": "sum(lnd_channels_bandwidth_incoming_sat{namespace=\"$namespace\",job=\"$job\"})",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -358,7 +358,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_channels_pending_htlc_count > 0",
+          "expr": "lnd_channels_pending_htlc_count{namespace=\"$namespace\",job=\"$job\"} > 0",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "cid: {{ chan_id }}",
@@ -444,7 +444,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "topk(5, lnd_channels_sent_sat + lnd_channels_received_sat > 0)",
+          "expr": "topk(5, lnd_channels_sent_sat + lnd_channels_received_sat{namespace=\"$namespace\",job=\"$job\"} > 0)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "cid: {{ chan_id }}",
@@ -532,7 +532,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "topk(5, lnd_channels_updates_count)",
+          "expr": "topk(5, lnd_channels_updates_count{namespace=\"$namespace\",job=\"$job\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "cid: {{ chan_id }}",
@@ -619,7 +619,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(lnd_channels_commit_fee)",
+          "expr": "sum(lnd_channels_commit_fee{namespace=\"$namespace\",job=\"$job\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "total_commit_fees",
@@ -705,21 +705,21 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "max(lnd_channels_fee_per_kw)",
+          "expr": "max(lnd_channels_fee_per_kw{namespace=\"$namespace\",job=\"$job\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "max_fee_per_kw",
           "refId": "A"
         },
         {
-          "expr": "min(lnd_channels_fee_per_kw)",
+          "expr": "min(lnd_channels_fee_per_kw{namespace=\"$namespace\",job=\"$job\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "min_fee_per_kw",
           "refId": "B"
         },
         {
-          "expr": "avg(lnd_channels_fee_per_kw)",
+          "expr": "avg(lnd_channels_fee_per_kw{namespace=\"$namespace\",job=\"$job\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "avg_fee_per_kw",
@@ -807,7 +807,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_channels_bandwidth_incoming_sat > 20000",
+          "expr": "lnd_channels_bandwidth_incoming_sat{namespace=\"$namespace\",job=\"$job\"} > 20000",
           "format": "time_series",
           "instant": true,
           "intervalFactor": 1,
@@ -897,7 +897,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_channels_bandwidth_outgoing_sat > 20000",
+          "expr": "lnd_channels_bandwidth_outgoing_sat{namespace=\"$namespace\",job=\"$job\"} > 20000",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "chan_id: {{chan_id}}",
