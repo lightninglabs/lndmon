@@ -3,6 +3,7 @@ package collectors
 import (
 	"context"
 
+	"github.com/lightninglabs/lndmon/config"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -117,7 +118,7 @@ func (p *PeerCollector) Collect(ch chan<- prometheus.Metric) {
 
 func init() {
 	metricsMtx.Lock()
-	collectors["peer"] = func(lnd lnrpc.LightningClient) prometheus.Collector {
+	collectors["peer"] = func(cfg config.Config, lnd lnrpc.LightningClient) prometheus.Collector {
 		collector := NewPeerCollector(lnd)
 		return prometheus.Collector(collector)
 	}

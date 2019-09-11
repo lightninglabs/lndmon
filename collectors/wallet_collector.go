@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 
+	"github.com/lightninglabs/lndmon/config"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -191,7 +192,7 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 
 func init() {
 	metricsMtx.Lock()
-	collectors["wallet"] = func(lnd lnrpc.LightningClient) prometheus.Collector {
+	collectors["wallet"] = func(cfg config.Config, lnd lnrpc.LightningClient) prometheus.Collector {
 		return NewWalletCollector(lnd)
 	}
 	metricsMtx.Unlock()

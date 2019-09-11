@@ -3,6 +3,7 @@ package collectors
 import (
 	"context"
 
+	"github.com/lightninglabs/lndmon/config"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -461,7 +462,7 @@ func (g *GraphCollector) collectRoutingPolicyMetrics(
 
 func init() {
 	metricsMtx.Lock()
-	collectors["graph"] = func(lnd lnrpc.LightningClient) prometheus.Collector {
+	collectors["graph"] = func(cfg config.Config, lnd lnrpc.LightningClient) prometheus.Collector {
 		return NewGraphCollector(lnd)
 	}
 	metricsMtx.Unlock()

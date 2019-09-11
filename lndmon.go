@@ -8,8 +8,13 @@ import (
 	"syscall"
 
 	"github.com/lightninglabs/lndmon/collectors"
+	"github.com/lightninglabs/lndmon/config"
 	"github.com/lightninglabs/lndmon/health"
 	"github.com/lightninglabs/loop/lndclient"
+)
+
+var (
+	cfg = config.DefaultConfig
 )
 
 // Main is the true entrypoint to lndmon.
@@ -42,7 +47,7 @@ func start() error {
 
 	// Start our Prometheus exporter. This exporter spawns a goroutine
 	// that pulls metrics from our lnd client on a set interval.
-	exporter := collectors.NewPrometheusExporter(cfg.Prometheus, lnd)
+	exporter := collectors.NewPrometheusExporter(cfg, lnd)
 	if err := exporter.Start(); err != nil {
 		return err
 	}

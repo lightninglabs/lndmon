@@ -3,10 +3,9 @@ package collectors
 import (
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"sync"
 
-	"github.com/btcsuite/btcutil"
+	"github.com/lightninglabs/lndmon/config"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -16,53 +15,22 @@ var (
 	// collectors is a global variable of registered prometheus.Collectors
 	// protected by the mutex below. All new Collectors should add
 	// themselves to this map within the init() method of their file.
-	collectors = make(map[string]func(lnrpc.LightningClient) prometheus.Collector)
+	collectors = make(map[string]func(config.Config, lnrpc.LightningClient) prometheus.Collector)
 
 	metricsMtx sync.Mutex
-
-	// log configuration defaults.
-	defaultLogFilename = "lndmon.log"
-	defaultLndmonDir   = btcutil.AppDataDir("lndmon", false)
 )
 
 // PrometheusExporter is a metric exporter that exports relevant lnd metrics
 // such as routing policies to track how Lightning fees change over time.
 type PrometheusExporter struct {
-	cfg *PrometheusConfig
+	cfg config.Config
 
 	lnd lnrpc.LightningClient
 }
 
-// PrometheusConfig is the set of configuration data that specifies the
-// listening address of the Prometheus server and configuration for lndmon logs.
-type PrometheusConfig struct {
-	// ListenAddr is the listening address that we should use to allow the
-	// main Prometheus server to scrape our metrics.
-	ListenAddr string `long:"listenaddr" description:"the interface we should listen on for prometheus"`
-
-	// LogDir is the directory to log lndmon output.
-	LogDir string `long:"logdir" description:"Directory to log output"`
-
-	// MaxLogFiles is the maximum number of log files to keep (0 for no
-	// rotation).
-	MaxLogFiles int `long:"maxlogfiles" description:"Maximum log files to keep (0 for no rotation)"`
-
-	// MaxLogFileSize is the maximum log file size in MB.
-	MaxLogFileSize int `long:"maxlogfilesize" description:"Maximum log file size in MB"`
-}
-
-func DefaultConfig() *PrometheusConfig {
-	return &PrometheusConfig{
-		ListenAddr:     "localhost:9092",
-		LogDir:         filepath.Join(defaultLndmonDir, "logs"),
-		MaxLogFiles:    3,
-		MaxLogFileSize: 10,
-	}
-}
-
 // NewPrometheusExporter makes a new instance of the PrometheusExporter given
 // the address to listen for Prometheus on and an lnd gRPC client.
-func NewPrometheusExporter(cfg *PrometheusConfig, lnd lnrpc.LightningClient) *PrometheusExporter {
+func NewPrometheusExporter(cfg config.Config, lnd lnrpc.LightningClient) *PrometheusExporter {
 	return &PrometheusExporter{
 		cfg: cfg,
 		lnd: lnd,
@@ -88,7 +56,7 @@ func (p *PrometheusExporter) Start() error {
 	// scape our metrics.
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
-		Logger.Info(http.ListenAndServe(p.cfg.ListenAddr, nil))
+		Logger.Info(http.ListenAndServe(p.cfg.Prometheus.ListenAddr, nil))
 	}()
 
 	return nil
@@ -102,7 +70,7 @@ func (p *PrometheusExporter) registerMetrics() error {
 	defer metricsMtx.Unlock()
 
 	for _, collectorFunc := range collectors {
-		err := prometheus.Register(collectorFunc(p.lnd))
+		err := prometheus.Register(collectorFunc(p.cfg, p.lnd))
 		if err != nil {
 			return err
 		}

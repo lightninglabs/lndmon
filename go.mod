@@ -7,7 +7,7 @@ require (
 	github.com/jessevdk/go-flags v1.4.0
 	github.com/jrick/logrotate v1.0.0
 	github.com/lightninglabs/loop v0.2.0-alpha
-	github.com/lightningnetwork/lnd v0.7.0-beta
+	github.com/lightningnetwork/lnd v0.7.1-beta
 	github.com/prometheus/client_golang v0.9.3
 	google.golang.org/grpc v1.20.1 // indirect
 )

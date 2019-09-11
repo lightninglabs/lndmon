@@ -3,6 +3,7 @@ package collectors
 import (
 	"context"
 
+	"github.com/lightninglabs/lndmon/config"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -65,7 +66,7 @@ func (c *ChainCollector) Collect(ch chan<- prometheus.Metric) {
 
 func init() {
 	metricsMtx.Lock()
-	collectors["chain"] = func(lnd lnrpc.LightningClient) prometheus.Collector {
+	collectors["chain"] = func(cfg config.Config, lnd lnrpc.LightningClient) prometheus.Collector {
 		return NewChainCollector(lnd)
 	}
 	metricsMtx.Unlock()

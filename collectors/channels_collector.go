@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/lightninglabs/lndmon/config"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -32,12 +33,14 @@ type ChannelsCollector struct {
 	commitWeightDesc     *prometheus.Desc
 	commitFeeDesc        *prometheus.Desc
 
+	cfg *config.ChannelConfig
+
 	lnd lnrpc.LightningClient
 }
 
 // NewChannelsCollector returns a new instance of the ChannelsCollector for the
 // target lnd client.
-func NewChannelsCollector(lnd lnrpc.LightningClient) *ChannelsCollector {
+func NewChannelsCollector(cfg config.Config, lnd lnrpc.LightningClient) *ChannelsCollector {
 	// Our set of labels, status should either be active or inactive. The
 	// initiator is "true" if we are the initiator, and "false" otherwise.
 	labels := []string{"chan_id", "status", "initiator"}
@@ -128,6 +131,7 @@ func NewChannelsCollector(lnd lnrpc.LightningClient) *ChannelsCollector {
 			labels, nil,
 		),
 
+		cfg: cfg.Channels,
 		lnd: lnd,
 	}
 }
@@ -239,7 +243,9 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 		return "false"
 	}
 
-	for _, channel := range listChannelsResp.Channels {
+	channels := c.filter(listChannelsResp.Channels)
+
+	for _, channel := range channels {
 		status := statusLabel(channel)
 		initiator := initiatorLabel(channel)
 
@@ -301,10 +307,21 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
+func (c *ChannelsCollector) filter(channels []*lnrpc.Channel) []*lnrpc.Channel {
+	var filtered []*lnrpc.Channel
+
+	for _, channel := range channels {
+		if channel.Capacity >= c.cfg.MinChanSize {
+			filtered = append(filtered, channel)
+		}
+	}
+	return filtered
+}
+
 func init() {
 	metricsMtx.Lock()
-	collectors["channels"] = func(lnd lnrpc.LightningClient) prometheus.Collector {
-		return NewChannelsCollector(lnd)
+	collectors["channels"] = func(cfg config.Config, lnd lnrpc.LightningClient) prometheus.Collector {
+		return NewChannelsCollector(cfg, lnd)
 	}
 	metricsMtx.Unlock()
 }
