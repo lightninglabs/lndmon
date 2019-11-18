@@ -5,8 +5,8 @@ require (
 	github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d
 	github.com/jessevdk/go-flags v1.4.0
 	github.com/jrick/logrotate v1.0.0
-	github.com/lightninglabs/loop v0.2.2-alpha.0.20190914124432-08f07946f762
-	github.com/lightningnetwork/lnd v0.7.1-beta-rc2.0.20190914085956-35027e52fc22
+	github.com/lightninglabs/loop v0.2.4-alpha.0.20191116024025-539d6ed9e3e8
+	github.com/lightningnetwork/lnd v0.8.0-beta-rc3.0.20191115230031-4d7a151b4763
 	github.com/prometheus/client_golang v0.9.3
 )
 
