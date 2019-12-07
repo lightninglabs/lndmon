@@ -142,7 +142,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "deriv(lnd_peer_count[30s])",
+          "expr": "deriv(lnd_peer_count[40s])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "peer_count_deriv",
@@ -228,10 +228,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(lnd_peer_sent_byte)",
+          "expr": "irate(lnd_peer_sent_byte[5m])",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "total_bytes_sent",
+          "legendFormat": "{{ pubkey }}",
           "refId": "A"
         }
       ],
@@ -314,10 +314,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(lnd_peer_recv_byte)",
+          "expr": "irate(lnd_peer_recv_byte[5m])",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "total_recv_bytes",
+          "legendFormat": "{{ pubkey }}",
           "refId": "A"
         }
       ],
@@ -590,7 +590,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "topk(5, lnd_peer_recv_sat)",
+          "expr": "topk(5, lnd_peer_recv_byte)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{ pubkey }}",
@@ -727,6 +727,7 @@
       }
     }
   ],
+  "refresh": "5m",
   "schemaVersion": 18,
   "style": "dark",
   "tags": [],
@@ -734,7 +735,7 @@
     "list": []
   },
   "time": {
-    "from": "now-6h",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {
@@ -765,5 +766,5 @@
   "timezone": "",
   "title": "Peer State",
   "uid": "WZoVj0HZk",
-  "version": 12
+  "version": 13
 }
