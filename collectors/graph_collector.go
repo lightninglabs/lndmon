@@ -9,8 +9,9 @@ import (
 
 // GraphCollector is a collector that keeps track of graph information.
 type GraphCollector struct {
-	numEdgesDesc *prometheus.Desc
-	numNodesDesc *prometheus.Desc
+	numEdgesDesc   *prometheus.Desc
+	numNodesDesc   *prometheus.Desc
+	numZombiesDesc *prometheus.Desc
 
 	avgOutDegreeDesc  *prometheus.Desc
 	maxOutDegreeDesc  *prometheus.Desc
@@ -64,6 +65,11 @@ func NewGraphCollector(lnd lnrpc.LightningClient) *GraphCollector {
 		numNodesDesc: prometheus.NewDesc(
 			"lnd_graph_nodes_count",
 			"total number of nodes in the graph",
+			nil, nil,
+		),
+		numZombiesDesc: prometheus.NewDesc(
+			"lnd_graph_zombies_count",
+			"total number of zombies in the graph",
 			nil, nil,
 		),
 
@@ -227,6 +233,7 @@ func NewGraphCollector(lnd lnrpc.LightningClient) *GraphCollector {
 func (g *GraphCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- g.numEdgesDesc
 	ch <- g.numNodesDesc
+	ch <- g.numZombiesDesc
 
 	ch <- g.avgOutDegreeDesc
 	ch <- g.maxOutDegreeDesc
@@ -284,6 +291,10 @@ func (g *GraphCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(
 		g.numNodesDesc, prometheus.GaugeValue,
 		float64(len(resp.Nodes)),
+	)
+	ch <- prometheus.MustNewConstMetric(
+		g.numZombiesDesc, prometheus.GaugeValue,
+		float64(resp.NumZombies),
 	)
 
 	g.collectRoutingPolicyMetrics(ch, resp.Edges)
