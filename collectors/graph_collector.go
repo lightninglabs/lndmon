@@ -292,10 +292,6 @@ func (g *GraphCollector) Collect(ch chan<- prometheus.Metric) {
 		g.numNodesDesc, prometheus.GaugeValue,
 		float64(len(resp.Nodes)),
 	)
-	ch <- prometheus.MustNewConstMetric(
-		g.numZombiesDesc, prometheus.GaugeValue,
-		float64(resp.NumZombies),
-	)
 
 	g.collectRoutingPolicyMetrics(ch, resp.Edges)
 
@@ -306,6 +302,11 @@ func (g *GraphCollector) Collect(ch chan<- prometheus.Metric) {
 		graphLogger.Error(err)
 		return
 	}
+
+	ch <- prometheus.MustNewConstMetric(
+		g.numZombiesDesc, prometheus.GaugeValue,
+		float64(networkInfo.NumZombieChans),
+	)
 
 	ch <- prometheus.MustNewConstMetric(
 		g.avgOutDegreeDesc, prometheus.GaugeValue,
