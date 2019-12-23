@@ -26,6 +26,8 @@ type ChannelsCollector struct {
 
 	numUpdatesDesc *prometheus.Desc
 
+	channelUptimeDesc *prometheus.Desc
+
 	csvDelayDesc         *prometheus.Desc
 	unsettledBalanceDesc *prometheus.Desc
 	feePerKwDesc         *prometheus.Desc
@@ -127,6 +129,11 @@ func NewChannelsCollector(lnd lnrpc.LightningClient) *ChannelsCollector {
 			"total number of updates conducted within this channel",
 			labels, nil,
 		),
+		channelUptimeDesc: prometheus.NewDesc(
+			"lnd_channel_uptime_percentage",
+			"uptime percentage for channel",
+			labels, nil,
+		),
 
 		lnd: lnd,
 	}
@@ -155,6 +162,8 @@ func (c *ChannelsCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.satsRecvDesc
 
 	ch <- c.numUpdatesDesc
+
+	ch <- c.channelUptimeDesc
 
 	ch <- c.csvDelayDesc
 
@@ -298,6 +307,15 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 			float64(channel.CommitFee),
 			strconv.Itoa(int(channel.ChanId)), status, initiator,
 		)
+
+		// Only record uptime if the channel has been monitored.
+		if channel.Lifetime != 0 {
+			ch <- prometheus.MustNewConstMetric(
+				c.channelUptimeDesc, prometheus.GaugeValue,
+				float64(channel.Uptime)/float64(channel.Lifetime),
+				strconv.Itoa(int(channel.ChanId)), status, initiator,
+			)
+		}
 	}
 }
 
