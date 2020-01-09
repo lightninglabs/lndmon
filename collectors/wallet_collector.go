@@ -185,8 +185,6 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 			float64(tx.NumConfirmations), tx.TxHash,
 		)
 	}
-
-	return
 }
 
 func init() {

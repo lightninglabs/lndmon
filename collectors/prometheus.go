@@ -22,6 +22,8 @@ var (
 
 	// log configuration defaults.
 	defaultLogFilename = "lndmon.log"
+	defaultLogFileSize = 10
+	defaultMaxLogFile  = 10
 	defaultLndmonDir   = btcutil.AppDataDir("lndmon", false)
 )
 
@@ -72,6 +74,15 @@ func NewPrometheusExporter(cfg *PrometheusConfig, lnd lnrpc.LightningClient) *Pr
 // Start registers all relevant metrics with the Prometheus library, then
 // launches the HTTP server that Prometheus will hit to scrape our metrics.
 func (p *PrometheusExporter) Start() error {
+	err := initLogRotator(
+		filepath.Join(p.cfg.LogDir, defaultLogFilename),
+		defaultLogFileSize,
+		defaultMaxLogFile,
+	)
+	if err != nil {
+		return err
+	}
+
 	Logger.Info("Starting Prometheus exporter...")
 	if p.lnd == nil {
 		return fmt.Errorf("cannot start PrometheusExporter without " +

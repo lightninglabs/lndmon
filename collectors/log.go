@@ -52,7 +52,10 @@ func initLogRotator(logFile string, MaxLogFileSize int, MaxLogFiles int) error {
 	}
 
 	pr, pw := io.Pipe()
-	go r.Run(pr)
+	go func() {
+		err := r.Run(pr)
+		fmt.Println("unable to set up logs: ", err)
+	}()
 
 	logWriter.RotatorPipe = pw
 
