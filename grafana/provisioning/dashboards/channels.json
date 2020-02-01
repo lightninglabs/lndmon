@@ -810,7 +810,7 @@
           "format": "time_series",
           "instant": true,
           "intervalFactor": 1,
-          "legendFormat": "cid: {{chan_id}}",
+          "legendFormat": "cid: {{ chan_id }}",
           "refId": "A"
         }
       ],
@@ -987,7 +987,7 @@
           "expr": "lnd_channels_bandwidth_outgoing_sat{namespace=\"$namespace\",pod=\"$node\"} > 20000",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "chan_id: {{chan_id}}",
+          "legendFormat": "chan_id: {{ chan_id }}",
           "refId": "A"
         }
       ],
