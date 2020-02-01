@@ -56,7 +56,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_peer_count",
+          "expr": "lnd_peer_count{namespace=\"$namespace\",pod=\"$node\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "num_peers",
@@ -142,7 +142,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "deriv(lnd_peer_count[40s])",
+          "expr": "deriv(lnd_peer_count{namespace=\"$namespace\",pod=\"$node\"}[40s])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "peer_count_deriv",
@@ -228,7 +228,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "irate(lnd_peer_sent_byte[5m])",
+          "expr": "irate(lnd_peer_sent_byte{namespace=\"$namespace\",pod=\"$node\"}[5m])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{ pubkey }}",
@@ -314,7 +314,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "irate(lnd_peer_recv_byte[5m])",
+          "expr": "irate(lnd_peer_recv_byte{namespace=\"$namespace\",pod=\"$node\"}[5m])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{ pubkey }}",
@@ -400,21 +400,21 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "min((lnd_peer_ping_time_microsecond > 0) / 1000)",
+          "expr": "min((lnd_peer_ping_time_microsecond{namespace=\"$namespace\",pod=\"$node\"} > 0) / 1000)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "min_ping_ms ",
           "refId": "A"
         },
         {
-          "expr": "max(lnd_peer_ping_time_microsecond / 1000)",
+          "expr": "max(lnd_peer_ping_time_microsecond{namespace=\"$namespace\",pod=\"$node\"} / 1000)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "max_ping_ms",
           "refId": "B"
         },
         {
-          "expr": "avg(lnd_peer_ping_time_microsecond / 1000)",
+          "expr": "avg(lnd_peer_ping_time_microsecond{namespace=\"$namespace\",pod=\"$node\"} / 1000)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "avg_ping_ms",
@@ -502,7 +502,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "topk(5, lnd_peer_sent_byte)",
+          "expr": "topk(5, lnd_peer_sent_byte{namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{ pubkey }}",
@@ -590,7 +590,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "topk(5, lnd_peer_recv_byte)",
+          "expr": "topk(5, lnd_peer_recv_byte{namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{ pubkey }}",
@@ -678,7 +678,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "topk(5, lnd_peer_sent_sat + lnd_peer_recv_sat > 0)",
+          "expr": "topk(5, lnd_peer_sent_sat{namespace=\"$namespace\",pod=\"$node\"} + lnd_peer_recv_sat{namespace=\"$namespace\",pod=\"$node\"} > 0)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{ pubkey }} ",
