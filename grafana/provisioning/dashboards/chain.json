@@ -397,11 +397,6 @@
   "templating": {
     "list": [
       {
-        "current": {
-          "tags": [],
-          "text": "Prometheus",
-          "value": "Prometheus"
-        },
         "hide": 0,
         "includeAll": false,
         "label": null,
@@ -416,20 +411,15 @@
       },
       {
         "allValue": null,
-        "current": {
-          "tags": [],
-          "text": "",
-          "value": ""
-        },
         "datasource": "$datasource",
-        "definition": "label_values(kube_pod_info, namespace)",
+        "definition": "label_values(namespace)",
         "hide": 0,
         "includeAll": false,
         "label": "namespace",
         "multi": false,
         "name": "namespace",
         "options": [],
-        "query": "label_values(kube_pod_info, namespace)",
+        "query": "label_values(namespace)",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
@@ -442,11 +432,6 @@
       },
       {
         "allValue": null,
-        "current": {
-          "tags": [],
-          "text": "",
-          "value": ""
-        },
         "datasource": "$datasource",
         "definition": "label_values(lnd_chain_block_timestamp{namespace=\"$namespace\"}, pod)",
         "hide": 0,
