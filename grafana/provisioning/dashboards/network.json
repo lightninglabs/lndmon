@@ -868,6 +868,11 @@
   "tags": ["ligithning-network"],
   "templating": {
     "list": [{
+        "current": {
+          "tags": [],
+          "text": "default",
+          "value": "default"
+        },
         "hide": 0,
         "includeAll": false,
         "label": null,
