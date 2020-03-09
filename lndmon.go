@@ -1,6 +1,7 @@
 package lndmon
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -9,6 +10,7 @@ import (
 	flags "github.com/jessevdk/go-flags"
 	"github.com/lightninglabs/lndmon/collectors"
 	"github.com/lightninglabs/loop/lndclient"
+	"github.com/lightningnetwork/lnd/lnrpc"
 )
 
 // Main is the true entrypoint to lndmon.
@@ -38,10 +40,18 @@ func start() error {
 		return err
 	}
 
+	// make sure we're able to send a basic request
+	_, err = lnd.GetInfo(context.Background(), &lnrpc.GetInfoRequest{})
+	if err != nil {
+		return fmt.Errorf("could not query LND: %w", err)
+	}
+
 	// Start our Prometheus exporter. This exporter spawns a goroutine
 	// that pulls metrics from our lnd client on a set interval.
 	exporter := collectors.NewPrometheusExporter(cfg.Prometheus, lnd)
-	if err := exporter.Start(); err != nil {
+
+	listenErr := make(chan error, 1)
+	if err := exporter.Start(listenErr); err != nil {
 		return err
 	}
 
@@ -57,7 +67,14 @@ func start() error {
 		done <- true
 	}()
 
-	<-done
+	select {
+	case <-done:
+	case err := <-listenErr:
+		if err != nil {
+			return fmt.Errorf("received error from Prometheus exporter: %w", err)
+		}
+	}
+
 	fmt.Println("Exiting lndmon.")
 
 	return nil

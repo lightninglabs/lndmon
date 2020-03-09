@@ -73,7 +73,7 @@ func NewPrometheusExporter(cfg *PrometheusConfig, lnd lnrpc.LightningClient) *Pr
 
 // Start registers all relevant metrics with the Prometheus library, then
 // launches the HTTP server that Prometheus will hit to scrape our metrics.
-func (p *PrometheusExporter) Start() error {
+func (p *PrometheusExporter) Start(out chan<- error) error {
 	err := initLogRotator(
 		filepath.Join(p.cfg.LogDir, defaultLogFilename),
 		defaultLogFileSize,
@@ -99,7 +99,7 @@ func (p *PrometheusExporter) Start() error {
 	// scape our metrics.
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
-		Logger.Info(http.ListenAndServe(p.cfg.ListenAddr, nil))
+		out <- http.ListenAndServe(p.cfg.ListenAddr, nil)
 	}()
 
 	return nil
