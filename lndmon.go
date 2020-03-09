@@ -41,7 +41,9 @@ func start() error {
 	// Start our Prometheus exporter. This exporter spawns a goroutine
 	// that pulls metrics from our lnd client on a set interval.
 	exporter := collectors.NewPrometheusExporter(cfg.Prometheus, lnd)
-	if err := exporter.Start(); err != nil {
+
+	listenErr := make(chan error, 1)
+	if err := exporter.Start(listenErr); err != nil {
 		return err
 	}
 
@@ -57,7 +59,14 @@ func start() error {
 		done <- true
 	}()
 
-	<-done
+	select {
+	case <-done:
+	case err := <-listenErr:
+		if err != nil {
+			return fmt.Errorf("received error from Prometheus exporter: %w", err)
+		}
+	}
+
 	fmt.Println("Exiting lndmon.")
 
 	return nil
