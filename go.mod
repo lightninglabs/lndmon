@@ -8,6 +8,7 @@ require (
 	github.com/lightninglabs/loop v0.2.4-alpha.0.20191116024025-539d6ed9e3e8
 	github.com/lightningnetwork/lnd v0.8.0-beta-rc3.0.20191115230031-4d7a151b4763
 	github.com/prometheus/client_golang v0.9.3
+	github.com/stretchr/testify v1.2.2
 )
 
 go 1.13
