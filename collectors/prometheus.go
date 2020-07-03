@@ -13,11 +13,6 @@ import (
 )
 
 var (
-	// collectors is a global variable of registered prometheus.Collectors
-	// protected by the mutex below. All new Collectors should add
-	// themselves to this map within the init() method of their file.
-	collectors = make(map[string]func(lnrpc.LightningClient) prometheus.Collector)
-
 	metricsMtx sync.Mutex
 
 	// log configuration defaults.
@@ -112,8 +107,17 @@ func (p *PrometheusExporter) registerMetrics() error {
 	metricsMtx.Lock()
 	defer metricsMtx.Unlock()
 
-	for _, collectorFunc := range collectors {
-		err := prometheus.Register(collectorFunc(p.lnd))
+	collectors := []prometheus.Collector{
+		NewChainCollector(p.lnd),
+		NewChannelsCollector(p.lnd),
+		NewWalletCollector(p.lnd),
+		NewGraphCollector(p.lnd),
+		NewPeerCollector(p.lnd),
+		NewInfoCollector(p.lnd),
+	}
+
+	for _, collector := range collectors {
+		err := prometheus.Register(collector)
 		if err != nil {
 			return err
 		}

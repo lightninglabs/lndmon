@@ -494,11 +494,3 @@ func (c *ChannelsCollector) getRemotePolicies(pubkey string) (
 
 	return policies, nil
 }
-
-func init() {
-	metricsMtx.Lock()
-	collectors["channels"] = func(lnd lnrpc.LightningClient) prometheus.Collector {
-		return NewChannelsCollector(lnd)
-	}
-	metricsMtx.Unlock()
-}
