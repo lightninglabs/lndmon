@@ -9,6 +9,7 @@ import (
 	flags "github.com/jessevdk/go-flags"
 	"github.com/lightninglabs/lndmon/collectors"
 	"github.com/lightninglabs/loop/lndclient"
+	"github.com/lightningnetwork/lnd/routing/route"
 )
 
 // Main is the true entrypoint to lndmon.
@@ -38,9 +39,20 @@ func start() error {
 		return err
 	}
 
+	monitoringCfg := collectors.MonitoringConfig{}
+	if cfg.PrimaryNode != "" {
+		primaryNode, err := route.NewVertexFromStr(cfg.PrimaryNode)
+		if err != nil {
+			return err
+		}
+		monitoringCfg.PrimaryNode = &primaryNode
+	}
+
 	// Start our Prometheus exporter. This exporter spawns a goroutine
 	// that pulls metrics from our lnd client on a set interval.
-	exporter := collectors.NewPrometheusExporter(cfg.Prometheus, lnd)
+	exporter := collectors.NewPrometheusExporter(
+		cfg.Prometheus, lnd, &monitoringCfg,
+	)
 	if err := exporter.Start(); err != nil {
 		return err
 	}

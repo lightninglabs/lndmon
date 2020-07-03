@@ -7,6 +7,7 @@ import (
 
 	"github.com/btcsuite/btcutil"
 	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightningnetwork/lnd/routing/route"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -41,11 +42,15 @@ type ChannelsCollector struct {
 	inboundFee *prometheus.Desc
 
 	lnd lnrpc.LightningClient
+
+	primaryNode *route.Vertex
 }
 
 // NewChannelsCollector returns a new instance of the ChannelsCollector for the
 // target lnd client.
-func NewChannelsCollector(lnd lnrpc.LightningClient) *ChannelsCollector {
+func NewChannelsCollector(lnd lnrpc.LightningClient,
+	cfg *MonitoringConfig) *ChannelsCollector {
+
 	// Our set of labels, status should either be active or inactive. The
 	// initiator is "true" if we are the initiator, and "false" otherwise.
 	labels := []string{"chan_id", "status", "initiator"}
@@ -148,7 +153,8 @@ func NewChannelsCollector(lnd lnrpc.LightningClient) *ChannelsCollector {
 			[]string{"amount"}, nil,
 		),
 
-		lnd: lnd,
+		lnd:         lnd,
+		primaryNode: cfg.PrimaryNode,
 	}
 }
 
@@ -268,8 +274,12 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 		status := statusLabel(channel)
 		initiator := initiatorLabel(channel)
 
-		// Only record balances for channels that are usable.
-		if channel.Active {
+		primaryChannel := c.primaryNode != nil &&
+			channel.RemotePubkey == c.primaryNode.String()
+
+		// Only record balances for channels that are usable and
+		// external.
+		if channel.Active && !primaryChannel {
 			remoteBalances[channel.ChanId] = btcutil.Amount(
 				channel.RemoteBalance,
 			)

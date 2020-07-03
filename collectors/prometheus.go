@@ -8,6 +8,7 @@ import (
 
 	"github.com/btcsuite/btcutil"
 	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightningnetwork/lnd/routing/route"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -28,6 +29,8 @@ type PrometheusExporter struct {
 	cfg *PrometheusConfig
 
 	lnd lnrpc.LightningClient
+
+	monitoringCfg *MonitoringConfig
 }
 
 // PrometheusConfig is the set of configuration data that specifies the
@@ -48,6 +51,13 @@ type PrometheusConfig struct {
 	MaxLogFileSize int `long:"maxlogfilesize" description:"Maximum log file size in MB"`
 }
 
+// MonitoringConfig contains information that specifies how to monitor the node.
+type MonitoringConfig struct {
+	// PrimaryNode is the pubkey of the primary node in primary-gateway
+	// setups.
+	PrimaryNode *route.Vertex
+}
+
 func DefaultConfig() *PrometheusConfig {
 	return &PrometheusConfig{
 		ListenAddr:     "localhost:9092",
@@ -59,10 +69,13 @@ func DefaultConfig() *PrometheusConfig {
 
 // NewPrometheusExporter makes a new instance of the PrometheusExporter given
 // the address to listen for Prometheus on and an lnd gRPC client.
-func NewPrometheusExporter(cfg *PrometheusConfig, lnd lnrpc.LightningClient) *PrometheusExporter {
+func NewPrometheusExporter(cfg *PrometheusConfig, lnd lnrpc.LightningClient,
+	monitoringCfg *MonitoringConfig) *PrometheusExporter {
+
 	return &PrometheusExporter{
-		cfg: cfg,
-		lnd: lnd,
+		cfg:           cfg,
+		lnd:           lnd,
+		monitoringCfg: monitoringCfg,
 	}
 }
 
@@ -109,7 +122,7 @@ func (p *PrometheusExporter) registerMetrics() error {
 
 	collectors := []prometheus.Collector{
 		NewChainCollector(p.lnd),
-		NewChannelsCollector(p.lnd),
+		NewChannelsCollector(p.lnd, p.monitoringCfg),
 		NewWalletCollector(p.lnd),
 		NewGraphCollector(p.lnd),
 		NewPeerCollector(p.lnd),
