@@ -75,14 +75,6 @@ func (c *ChainCollector) Collect(ch chan<- prometheus.Metric) {
 	)
 }
 
-func init() {
-	metricsMtx.Lock()
-	collectors["chain"] = func(lnd lnrpc.LightningClient) prometheus.Collector {
-		return NewChainCollector(lnd)
-	}
-	metricsMtx.Unlock()
-}
-
 func boolToInt(arg bool) uint8 {
 	if arg {
 		return 1

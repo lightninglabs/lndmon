@@ -8,16 +8,12 @@ import (
 
 	"github.com/btcsuite/btcutil"
 	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightningnetwork/lnd/routing/route"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
-	// collectors is a global variable of registered prometheus.Collectors
-	// protected by the mutex below. All new Collectors should add
-	// themselves to this map within the init() method of their file.
-	collectors = make(map[string]func(lnrpc.LightningClient) prometheus.Collector)
-
 	metricsMtx sync.Mutex
 
 	// log configuration defaults.
@@ -33,6 +29,8 @@ type PrometheusExporter struct {
 	cfg *PrometheusConfig
 
 	lnd lnrpc.LightningClient
+
+	monitoringCfg *MonitoringConfig
 }
 
 // PrometheusConfig is the set of configuration data that specifies the
@@ -53,6 +51,13 @@ type PrometheusConfig struct {
 	MaxLogFileSize int `long:"maxlogfilesize" description:"Maximum log file size in MB"`
 }
 
+// MonitoringConfig contains information that specifies how to monitor the node.
+type MonitoringConfig struct {
+	// PrimaryNode is the pubkey of the primary node in primary-gateway
+	// setups.
+	PrimaryNode *route.Vertex
+}
+
 func DefaultConfig() *PrometheusConfig {
 	return &PrometheusConfig{
 		ListenAddr:     "localhost:9092",
@@ -64,10 +69,13 @@ func DefaultConfig() *PrometheusConfig {
 
 // NewPrometheusExporter makes a new instance of the PrometheusExporter given
 // the address to listen for Prometheus on and an lnd gRPC client.
-func NewPrometheusExporter(cfg *PrometheusConfig, lnd lnrpc.LightningClient) *PrometheusExporter {
+func NewPrometheusExporter(cfg *PrometheusConfig, lnd lnrpc.LightningClient,
+	monitoringCfg *MonitoringConfig) *PrometheusExporter {
+
 	return &PrometheusExporter{
-		cfg: cfg,
-		lnd: lnd,
+		cfg:           cfg,
+		lnd:           lnd,
+		monitoringCfg: monitoringCfg,
 	}
 }
 
@@ -112,8 +120,17 @@ func (p *PrometheusExporter) registerMetrics() error {
 	metricsMtx.Lock()
 	defer metricsMtx.Unlock()
 
-	for _, collectorFunc := range collectors {
-		err := prometheus.Register(collectorFunc(p.lnd))
+	collectors := []prometheus.Collector{
+		NewChainCollector(p.lnd),
+		NewChannelsCollector(p.lnd, p.monitoringCfg),
+		NewWalletCollector(p.lnd),
+		NewGraphCollector(p.lnd),
+		NewPeerCollector(p.lnd),
+		NewInfoCollector(p.lnd),
+	}
+
+	for _, collector := range collectors {
+		err := prometheus.Register(collector)
 		if err != nil {
 			return err
 		}

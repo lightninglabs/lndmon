@@ -114,12 +114,3 @@ func (p *PeerCollector) Collect(ch chan<- prometheus.Metric) {
 		)
 	}
 }
-
-func init() {
-	metricsMtx.Lock()
-	collectors["peer"] = func(lnd lnrpc.LightningClient) prometheus.Collector {
-		collector := NewPeerCollector(lnd)
-		return prometheus.Collector(collector)
-	}
-	metricsMtx.Unlock()
-}

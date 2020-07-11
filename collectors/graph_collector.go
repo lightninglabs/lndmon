@@ -470,11 +470,3 @@ func (g *GraphCollector) collectRoutingPolicyMetrics(
 		feeRateReport.median,
 	)
 }
-
-func init() {
-	metricsMtx.Lock()
-	collectors["graph"] = func(lnd lnrpc.LightningClient) prometheus.Collector {
-		return NewGraphCollector(lnd)
-	}
-	metricsMtx.Unlock()
-}

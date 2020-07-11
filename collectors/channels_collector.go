@@ -2,9 +2,12 @@ package collectors
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
+	"github.com/btcsuite/btcutil"
 	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightningnetwork/lnd/routing/route"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -34,12 +37,20 @@ type ChannelsCollector struct {
 	commitWeightDesc     *prometheus.Desc
 	commitFeeDesc        *prometheus.Desc
 
+	// inboundFee is a metric that reflects the fee paid by senders on the
+	// last hop towards this node.
+	inboundFee *prometheus.Desc
+
 	lnd lnrpc.LightningClient
+
+	primaryNode *route.Vertex
 }
 
 // NewChannelsCollector returns a new instance of the ChannelsCollector for the
 // target lnd client.
-func NewChannelsCollector(lnd lnrpc.LightningClient) *ChannelsCollector {
+func NewChannelsCollector(lnd lnrpc.LightningClient,
+	cfg *MonitoringConfig) *ChannelsCollector {
+
 	// Our set of labels, status should either be active or inactive. The
 	// initiator is "true" if we are the initiator, and "false" otherwise.
 	labels := []string{"chan_id", "status", "initiator"}
@@ -135,7 +146,15 @@ func NewChannelsCollector(lnd lnrpc.LightningClient) *ChannelsCollector {
 			labels, nil,
 		),
 
-		lnd: lnd,
+		// Use labels for the inbound fee for various amounts.
+		inboundFee: prometheus.NewDesc(
+			"inbound_fee",
+			"fee charged for forwarding to this node",
+			[]string{"amount"}, nil,
+		),
+
+		lnd:         lnd,
+		primaryNode: cfg.PrimaryNode,
 	}
 }
 
@@ -170,6 +189,8 @@ func (c *ChannelsCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.feePerKwDesc
 	ch <- c.commitWeightDesc
 	ch <- c.commitFeeDesc
+
+	ch <- c.inboundFee
 }
 
 // Collect is called by the Prometheus registry when collecting metrics.
@@ -248,9 +269,21 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 		return "false"
 	}
 
+	remoteBalances := make(map[uint64]btcutil.Amount)
 	for _, channel := range listChannelsResp.Channels {
 		status := statusLabel(channel)
 		initiator := initiatorLabel(channel)
+
+		primaryChannel := c.primaryNode != nil &&
+			channel.RemotePubkey == c.primaryNode.String()
+
+		// Only record balances for channels that are usable and
+		// external.
+		if channel.Active && !primaryChannel {
+			remoteBalances[channel.ChanId] = btcutil.Amount(
+				channel.RemoteBalance,
+			)
+		}
 
 		ch <- prometheus.MustNewConstMetric(
 			c.incomingChanSatDesc, prometheus.GaugeValue,
@@ -317,12 +350,157 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 			)
 		}
 	}
+
+	// Get all remote policies
+	remotePolicies, err := c.getRemotePolicies(getInfoResp.IdentityPubkey)
+	if err != nil {
+		channelLogger.Error(err)
+		return
+	}
+
+	// Export the inbound fee metric for a series of amounts.
+	var receiveAmt btcutil.Amount = 100000
+	for {
+		// For each fee amount, we'll approximate the total routing fee
+		// that needs to be paid to pay us.
+		inboundFee := approximateInboundFee(
+			receiveAmt, remotePolicies, remoteBalances,
+		)
+		if inboundFee == nil {
+			break
+		}
+
+		// Calculate the fee proportional to the amount to receive.
+		proportionalFee := float64(*inboundFee) / float64(receiveAmt)
+
+		ch <- prometheus.MustNewConstMetric(
+			c.inboundFee, prometheus.GaugeValue,
+			proportionalFee,
+			receiveAmt.String(),
+		)
+
+		// Continue the series with double the amount.
+		receiveAmt *= 2
+	}
 }
 
-func init() {
-	metricsMtx.Lock()
-	collectors["channels"] = func(lnd lnrpc.LightningClient) prometheus.Collector {
-		return NewChannelsCollector(lnd)
+// approximateInboundFee calculates to forward fee for a specific amount charged by the
+// last hop before this node.
+func approximateInboundFee(amt btcutil.Amount, remotePolicies map[uint64]*lnrpc.RoutingPolicy,
+	remoteBalances map[uint64]btcutil.Amount) *btcutil.Amount {
+
+	var fee btcutil.Amount
+
+	// Copy the remote balances so they can be decreased as we find shards.
+	remainingBalances := make(map[uint64]btcutil.Amount)
+	for ch, balance := range remoteBalances {
+		remainingBalances[ch] = balance
 	}
-	metricsMtx.Unlock()
+
+	// Assume a perfect mpp splitting algorithm that knows exactly how much
+	// can be sent through each channel. This is a simplification, because
+	// in reality senders need to trial and error to find a shard amount
+	// that works.
+	//
+	// We'll keep iterating through all channels until we've covered the
+	// total amount. Each iteration, the best channel for that shard is
+	// selected based on the specific fee.
+	amountRemaining := amt
+	for amountRemaining > 0 {
+		var (
+			bestChan        uint64
+			bestSpecificFee float64
+			bestAmount      btcutil.Amount
+			bestFee         btcutil.Amount
+		)
+
+		// Find the best channel to send the amount or a part of the
+		// amount.
+		for ch, balance := range remainingBalances {
+			// Skip channels without remote balance.
+			if balance == 0 {
+				continue
+			}
+
+			policy, ok := remotePolicies[ch]
+			if !ok {
+				continue
+			}
+
+			// Cap at the maximum receive amount for this channel.
+			amountToSend := amountRemaining
+			if amountToSend > balance {
+				amountToSend = balance
+			}
+
+			// Calculate fee for this amount to send.
+			fee := btcutil.Amount(
+				policy.FeeBaseMsat/1000 +
+					int64(amountToSend)*policy.FeeRateMilliMsat/1000000,
+			)
+
+			// Calculate the specific fee for this amount, being the
+			// fee per sat sent.
+			specificFee := float64(fee) / float64(amountToSend)
+
+			// Select the best channel for this shard based on the
+			// lowest specific fee.
+			if bestChan == 0 || bestSpecificFee > specificFee {
+				bestChan = ch
+				bestSpecificFee = specificFee
+				bestAmount = amountToSend
+				bestFee = fee
+			}
+		}
+
+		// No liquidity to send the full amount, break.
+		if bestChan == 0 {
+			return nil
+		}
+
+		amountRemaining -= bestAmount
+		fee += bestFee
+		remainingBalances[bestChan] -= bestAmount
+	}
+
+	return &fee
+}
+
+// getRemotePolicies gets all the remote policies for enabled channels of this
+// node's peers.
+func (c *ChannelsCollector) getRemotePolicies(pubkey string) (
+	map[uint64]*lnrpc.RoutingPolicy, error) {
+
+	nodeInfoResp, err := c.lnd.GetNodeInfo(
+		context.Background(), &lnrpc.NodeInfoRequest{
+			IncludeChannels: true,
+			PubKey:          pubkey,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	policies := make(map[uint64]*lnrpc.RoutingPolicy)
+	for _, i := range nodeInfoResp.Channels {
+		var policy *lnrpc.RoutingPolicy
+		switch {
+		case i.Node1Pub == pubkey:
+			policy = i.Node2Policy
+
+		case i.Node2Pub == pubkey:
+			policy = i.Node1Policy
+
+		default:
+			return nil, fmt.Errorf("pubkey not in node info channels")
+		}
+
+		// Only record policies for peers that have this channel
+		// enabled.
+		if policy != nil && !policy.Disabled {
+			policies[i.ChannelId] = policy
+		}
+	}
+
+	return policies, nil
 }

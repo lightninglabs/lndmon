@@ -26,6 +26,9 @@ type config struct {
 	// Lnd refers to the user's lnd configuration properties that we need to
 	// connect to it.
 	Lnd *lndConfig `group:"lnd" namespace:"lnd"`
+
+	// PrimaryNode is the pubkey of the primary node in primary-gateway setups.
+	PrimaryNode string `long:"primarynode" description:"Public key of the primary node in a primary-gateway setup"`
 }
 
 var defaultConfig = config{

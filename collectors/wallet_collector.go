@@ -186,11 +186,3 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 		)
 	}
 }
-
-func init() {
-	metricsMtx.Lock()
-	collectors["wallet"] = func(lnd lnrpc.LightningClient) prometheus.Collector {
-		return NewWalletCollector(lnd)
-	}
-	metricsMtx.Unlock()
-}

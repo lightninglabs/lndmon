@@ -50,11 +50,3 @@ func (c *InfoCollector) Collect(ch chan<- prometheus.Metric) {
 		0, resp.Version, resp.Alias, resp.IdentityPubkey,
 	)
 }
-
-func init() {
-	metricsMtx.Lock()
-	collectors["info"] = func(lnd lnrpc.LightningClient) prometheus.Collector {
-		return NewInfoCollector(lnd)
-	}
-	metricsMtx.Unlock()
-}

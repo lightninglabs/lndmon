@@ -17,3 +17,5 @@ user-config/*
 !user-config/.gitkeep
 nginx/etc/ssl/*
 nginx/etc/.htpasswd
+
+cmd/lndmon/lndmon
