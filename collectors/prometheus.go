@@ -115,7 +115,8 @@ func (p *PrometheusExporter) Start() error {
 		promHandler := promhttp.InstrumentMetricHandler(
 			prometheus.DefaultRegisterer,
 			promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
-				ErrorLog: errorLogger,
+				ErrorLog:      errorLogger,
+				ErrorHandling: promhttp.ContinueOnError,
 			}),
 		)
 		http.Handle("/metrics", promHandler)
