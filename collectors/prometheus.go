@@ -2,7 +2,9 @@ package collectors
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sync"
 
@@ -106,9 +108,21 @@ func (p *PrometheusExporter) Start() error {
 	// Finally, we'll launch the HTTP server that Prometheus will use to
 	// scape our metrics.
 	go func() {
-		http.Handle("/metrics", promhttp.Handler())
+		errorLogger := log.New(
+			os.Stdout, "promhttp", log.Ldate|log.Ltime|log.Lshortfile,
+		)
+
+		promHandler := promhttp.InstrumentMetricHandler(
+			prometheus.DefaultRegisterer,
+			promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
+				ErrorLog: errorLogger,
+			}),
+		)
+		http.Handle("/metrics", promHandler)
 		Logger.Info(http.ListenAndServe(p.cfg.ListenAddr, nil))
 	}()
+
+	Logger.Info("Prometheus active!")
 
 	return nil
 }
