@@ -8,8 +8,7 @@
 
 `lndmon` is a drop-in, dockerized monitoring/metric collection solution for your
 individual lnd nodes connected to bitcoin. With this system, you'll be able to
-closely monitor the health, status, and behavioral patterns of your lnd node and
-the lightning network as a whole.
+closely monitor the health and status of your 'lnd' node.
 
 There are three primary components of the `lndmon` system:
 
