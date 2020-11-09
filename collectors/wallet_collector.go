@@ -2,6 +2,7 @@ package collectors
 
 import (
 	"context"
+	"fmt"
 	"math"
 
 	"github.com/btcsuite/btcutil"
@@ -31,10 +32,16 @@ type WalletCollector struct {
 
 	// Per-transaction metrics.
 	txNumConfsDesc *prometheus.Desc
+
+	// errChan is a channel that we send any errors that we encounter into.
+	// This channel should be buffered so that it does not block sends.
+	errChan chan<- error
 }
 
 // NewWalletCollector returns a new instance of the WalletCollector.
-func NewWalletCollector(lnd *lndclient.LndServices) *WalletCollector {
+func NewWalletCollector(lnd *lndclient.LndServices,
+	errChan chan<- error) *WalletCollector {
+
 	txLabels := []string{"tx_hash"}
 	return &WalletCollector{
 		lnd: lnd,
@@ -71,6 +78,7 @@ func NewWalletCollector(lnd *lndclient.LndServices) *WalletCollector {
 		txNumConfsDesc: prometheus.NewDesc(
 			"lnd_tx_num_confs", "number of confs", txLabels, nil,
 		),
+		errChan: errChan,
 	}
 }
 
@@ -100,7 +108,8 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 		context.Background(), 0, math.MaxInt32,
 	)
 	if err != nil {
-		walletLogger.Error(err)
+		u.errChan <- fmt.Errorf("WalletCollector ListUnspent failed "+
+			"with: %v", err)
 		return
 	}
 
@@ -155,7 +164,8 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 	// balance at this instance.
 	walletBal, err := u.lnd.Client.WalletBalance(context.Background())
 	if err != nil {
-		walletLogger.Error(err)
+		u.errChan <- fmt.Errorf("WalletCollector WalletBalance "+
+			"failed with: %v", err)
 		return
 	}
 
@@ -172,7 +182,8 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 		context.Background(), 0, 0,
 	)
 	if err != nil {
-		walletLogger.Error(err)
+		u.errChan <- fmt.Errorf("WalletCollector ListTransactions "+
+			"failed with: %v", err)
 		return
 	}
 

@@ -2,6 +2,7 @@ package collectors
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/lightninglabs/lndclient"
 	"github.com/prometheus/client_golang/prometheus"
@@ -14,11 +15,17 @@ type ChainCollector struct {
 	syncedToChain      *prometheus.Desc
 
 	lnd lndclient.LightningClient
+
+	// errChan is a channel that we send any errors that we encounter into.
+	// This channel should be buffered so that it does not block sends.
+	errChan chan<- error
 }
 
 // NewChainCollector returns a new instance of the ChainCollector for the target
 // lnd client.
-func NewChainCollector(lnd lndclient.LightningClient) *ChainCollector {
+func NewChainCollector(lnd lndclient.LightningClient,
+	errChan chan<- error) *ChainCollector {
+
 	return &ChainCollector{
 		bestBlockHeight: prometheus.NewDesc(
 			"lnd_chain_block_height", "best block height from lnd",
@@ -34,7 +41,8 @@ func NewChainCollector(lnd lndclient.LightningClient) *ChainCollector {
 			"lnd is synced to the chain",
 			nil, nil,
 		),
-		lnd: lnd,
+		lnd:     lnd,
+		errChan: errChan,
 	}
 }
 
@@ -55,7 +63,8 @@ func (c *ChainCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *ChainCollector) Collect(ch chan<- prometheus.Metric) {
 	resp, err := c.lnd.GetInfo(context.Background())
 	if err != nil {
-		chainLogger.Error(err)
+		c.errChan <- fmt.Errorf("ChainCollector GetInfo failed with: "+
+			"%v", err)
 		return
 	}
 

@@ -5,6 +5,7 @@ services:
     build: .
     ports:
       - "9092:9092"
+    restart: always
     volumes:
       - ${TLS_CERT_PATH?}:/root/.lnd/tls.cert
       - ${MACAROON_PATH?}:/root/.lnd/

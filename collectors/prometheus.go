@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/btcsuite/btcutil"
 	"github.com/lightninglabs/lndclient"
@@ -16,8 +15,6 @@ import (
 )
 
 var (
-	metricsMtx sync.Mutex
-
 	// log configuration defaults.
 	defaultLogFilename = "lndmon.log"
 	defaultLogFileSize = 10
@@ -33,6 +30,13 @@ type PrometheusExporter struct {
 	lnd *lndclient.LndServices
 
 	monitoringCfg *MonitoringConfig
+
+	// collectors is the exporter's active set of collectors.
+	collectors []prometheus.Collector
+
+	// errChan is an error channel that we receive errors from our
+	// collectors on.
+	errChan <-chan error
 }
 
 // PrometheusConfig is the set of configuration data that specifies the
@@ -74,10 +78,26 @@ func DefaultConfig() *PrometheusConfig {
 func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
 	monitoringCfg *MonitoringConfig) *PrometheusExporter {
 
+	// We have six collectors, so we buffer our error channel by 6 so that
+	// we do not need to consume all errors from this channel (on the first
+	// one, we'll start shutting down, but a few could arrive quickly).
+	errChan := make(chan error, 6)
+
 	return &PrometheusExporter{
 		cfg:           cfg,
 		lnd:           lnd,
 		monitoringCfg: monitoringCfg,
+		collectors: []prometheus.Collector{
+			NewChainCollector(lnd.Client, errChan),
+			NewChannelsCollector(
+				lnd.Client, errChan, monitoringCfg,
+			),
+			NewWalletCollector(lnd, errChan),
+			NewGraphCollector(lnd.Client, errChan),
+			NewPeerCollector(lnd.Client, errChan),
+			NewInfoCollector(lnd.Client, errChan),
+		},
+		errChan: errChan,
 	}
 }
 
@@ -128,23 +148,17 @@ func (p *PrometheusExporter) Start() error {
 	return nil
 }
 
+// Errors returns an error channel that any failures experienced by its
+// collectors experience.
+func (p *PrometheusExporter) Errors() <-chan error {
+	return p.errChan
+}
+
 // registerMetrics iterates through all the registered collectors and attempts
 // to register each one. If any of the collectors fail to register, then an
 // error will be returned.
 func (p *PrometheusExporter) registerMetrics() error {
-	metricsMtx.Lock()
-	defer metricsMtx.Unlock()
-
-	collectors := []prometheus.Collector{
-		NewChainCollector(p.lnd.Client),
-		NewChannelsCollector(p.lnd.Client, p.monitoringCfg),
-		NewWalletCollector(p.lnd),
-		NewGraphCollector(p.lnd.Client),
-		NewPeerCollector(p.lnd.Client),
-		NewInfoCollector(p.lnd.Client),
-	}
-
-	for _, collector := range collectors {
+	for _, collector := range p.collectors {
 		err := prometheus.Register(collector)
 		if err != nil {
 			return err

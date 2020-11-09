@@ -3,14 +3,13 @@ package lndmon
 import (
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 
 	flags "github.com/jessevdk/go-flags"
 	"github.com/lightninglabs/lndclient"
 	"github.com/lightninglabs/lndmon/collectors"
 	"github.com/lightningnetwork/lnd/lnrpc/verrpc"
 	"github.com/lightningnetwork/lnd/routing/route"
+	"github.com/lightningnetwork/lnd/signal"
 )
 
 // Main is the true entrypoint to lndmon.
@@ -29,6 +28,10 @@ func start() error {
 			return nil
 		}
 		return err
+	}
+
+	if err := signal.Intercept(); err != nil {
+		return fmt.Errorf("could not intercept signal: %v", err)
 	}
 
 	// Initialize our lnd client, requiring at least lnd v0.11.
@@ -68,20 +71,15 @@ func start() error {
 		return err
 	}
 
-	// Wait for a signal to exit.
-	sigs := make(chan os.Signal, 1)
-	done := make(chan bool, 1)
+	// Wait to get the signal to shutdown, or for an error to occur with
+	// our metric export.
+	select {
+	case <-signal.ShutdownChannel():
+		fmt.Println("Exiting lndmon.")
+		return nil
 
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		sig := <-sigs
-		fmt.Printf("Received quit signal: %v\n", sig)
-		done <- true
-	}()
-
-	<-done
-	fmt.Println("Exiting lndmon.")
-
-	return nil
+	case err := <-exporter.Errors():
+		fmt.Printf("Lndmon exiting with error: %v\n", err)
+		return err
+	}
 }

@@ -3,6 +3,7 @@ package collectors
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 
 	"github.com/lightninglabs/lndclient"
 	"github.com/prometheus/client_golang/prometheus"
@@ -21,11 +22,17 @@ type PeerCollector struct {
 	bytesRecvDesc *prometheus.Desc
 
 	lnd lndclient.LightningClient
+
+	// errChan is a channel that we send any errors that we encounter into.
+	// This channel should be buffered so that it does not block sends.
+	errChan chan<- error
 }
 
 // NewPeerCollector returns a new instance of the PeerCollector for the target
 // lnd client.
-func NewPeerCollector(lnd lndclient.LightningClient) *PeerCollector {
+func NewPeerCollector(lnd lndclient.LightningClient,
+	errChan chan<- error) *PeerCollector {
+
 	perPeerLabels := []string{"pubkey"}
 	return &PeerCollector{
 		peerCountDesc: prometheus.NewDesc(
@@ -54,7 +61,8 @@ func NewPeerCollector(lnd lndclient.LightningClient) *PeerCollector {
 			"bytes transmitted from this peer",
 			perPeerLabels, nil,
 		),
-		lnd: lnd,
+		lnd:     lnd,
+		errChan: errChan,
 	}
 }
 
@@ -81,7 +89,8 @@ func (p *PeerCollector) Describe(ch chan<- *prometheus.Desc) {
 func (p *PeerCollector) Collect(ch chan<- prometheus.Metric) {
 	listPeersResp, err := p.lnd.ListPeers(context.Background())
 	if err != nil {
-		peerLogger.Error(err)
+		p.errChan <- fmt.Errorf("PeerCollector ListPeers failed with: "+
+			"%v", err)
 		return
 	}
 

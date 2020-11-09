@@ -2,6 +2,7 @@ package collectors
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/lightninglabs/lndclient"
 	"github.com/prometheus/client_golang/prometheus"
@@ -51,11 +52,17 @@ type GraphCollector struct {
 	avgMaxHtlcMsatDesc    *prometheus.Desc
 
 	lnd lndclient.LightningClient
+
+	// errChan is a channel that we send any errors that we encounter into.
+	// This channel should be buffered so that it does not block sends.
+	errChan chan<- error
 }
 
 // NewGraphCollector returns a new instance of the GraphCollector for the target
 // lnd client.
-func NewGraphCollector(lnd lndclient.LightningClient) *GraphCollector {
+func NewGraphCollector(lnd lndclient.LightningClient,
+	errChan chan<- error) *GraphCollector {
+
 	return &GraphCollector{
 		numEdgesDesc: prometheus.NewDesc(
 			"lnd_graph_edges_count",
@@ -221,7 +228,8 @@ func NewGraphCollector(lnd lndclient.LightningClient) *GraphCollector {
 			nil, nil,
 		),
 
-		lnd: lnd,
+		lnd:     lnd,
+		errChan: errChan,
 	}
 }
 
@@ -278,7 +286,8 @@ func (g *GraphCollector) Describe(ch chan<- *prometheus.Desc) {
 func (g *GraphCollector) Collect(ch chan<- prometheus.Metric) {
 	resp, err := g.lnd.DescribeGraph(context.Background(), false)
 	if err != nil {
-		graphLogger.Error(err)
+		g.errChan <- fmt.Errorf("GraphCollector DescribeGraph failed "+
+			"with: %v", err)
 		return
 	}
 
@@ -295,7 +304,8 @@ func (g *GraphCollector) Collect(ch chan<- prometheus.Metric) {
 
 	networkInfo, err := g.lnd.NetworkInfo(context.Background())
 	if err != nil {
-		graphLogger.Error(err)
+		g.errChan <- fmt.Errorf("GraphCollector NetworkInfo failed "+
+			"with: %v", err)
 		return
 	}
 

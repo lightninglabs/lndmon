@@ -44,11 +44,15 @@ type ChannelsCollector struct {
 	lnd lndclient.LightningClient
 
 	primaryNode *route.Vertex
+
+	// errChan is a channel that we send any errors that we encounter into.
+	// This channel should be buffered so that it does not block sends.
+	errChan chan<- error
 }
 
 // NewChannelsCollector returns a new instance of the ChannelsCollector for the
 // target lnd client.
-func NewChannelsCollector(lnd lndclient.LightningClient,
+func NewChannelsCollector(lnd lndclient.LightningClient, errChan chan<- error,
 	cfg *MonitoringConfig) *ChannelsCollector {
 
 	// Our set of labels, status should either be active or inactive. The
@@ -155,6 +159,7 @@ func NewChannelsCollector(lnd lndclient.LightningClient,
 
 		lnd:         lnd,
 		primaryNode: cfg.PrimaryNode,
+		errChan:     errChan,
 	}
 }
 
@@ -201,7 +206,8 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 	// pending channel balances.
 	chanBalResp, err := c.lnd.ChannelBalance(context.Background())
 	if err != nil {
-		channelLogger.Error(err)
+		c.errChan <- fmt.Errorf("ChannelsCollector ChannelBalance "+
+			"failed with: %v", err)
 		return
 	}
 
@@ -218,7 +224,8 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 	// have open.
 	getInfoResp, err := c.lnd.GetInfo(context.Background())
 	if err != nil {
-		channelLogger.Error(err)
+		c.errChan <- fmt.Errorf("ChannelsCollector GetInfo failed "+
+			"with: %v", err)
 		return
 	}
 
@@ -239,7 +246,8 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 	// as well as the number of pending HTLCs.
 	listChannelsResp, err := c.lnd.ListChannels(context.Background())
 	if err != nil {
-		channelLogger.Error(err)
+		c.errChan <- fmt.Errorf("ChannelsCollector ListChannels "+
+			"failed with: %v", err)
 		return
 	}
 
@@ -347,7 +355,8 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 	// Get all remote policies
 	remotePolicies, err := c.getRemotePolicies(getInfoResp.IdentityPubkey)
 	if err != nil {
-		channelLogger.Error(err)
+		c.errChan <- fmt.Errorf("ChannelsCollector getRemotePolicies "+
+			"failed with: %v", err)
 		return
 	}
 

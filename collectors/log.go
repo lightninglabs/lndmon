@@ -17,21 +17,6 @@ var (
 
 	// Logger for lndmon's main process.
 	Logger = backendLog.Logger("LNDMON")
-
-	// graphLogger for lndmon's graph collector.
-	graphLogger = build.NewSubLogger("GRPH", backendLog.Logger)
-
-	// peerLogger for lndmon's peer collector.
-	peerLogger = build.NewSubLogger("PEER", backendLog.Logger)
-
-	// channelLogger for lndmon's channel collector.
-	channelLogger = build.NewSubLogger("CHAN", backendLog.Logger)
-
-	// chainLogger for lndmon's chain collector.
-	chainLogger = build.NewSubLogger("BLCN", backendLog.Logger)
-
-	// walletLogger for lndmon's wallet collector.
-	walletLogger = build.NewSubLogger("WALT", backendLog.Logger)
 )
 
 // initLogRotator initializes the logging rotator to write logs to logFile and
