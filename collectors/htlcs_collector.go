@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -28,6 +29,15 @@ const (
 
 	chanInLabel  = "chan_in"
 	chanOutLabel = "chan_out"
+
+	// failureReasonLabel is the variable label we use for failure reasons
+	// for forwards.
+	failureReasonLabel = "failure_reason"
+
+	// failureReasonExternal is a special value for the failureReason
+	// that we use when a forward is failed back to us and we do not know
+	// the exact reason for failure.
+	failureReasonExternal = "failed_back"
 )
 
 // htlcLabels is the set of labels we use to label htlc events.
@@ -74,7 +84,7 @@ func newHtlcMonitor(router lndclient.RouterClient,
 			Subsystem: "htlcs",
 			Name:      "resolved_htlcs",
 			Help:      "count of resolved htlcs",
-		}, htlcLabels),
+		}, append(htlcLabels, failureReasonLabel)),
 		resolutionTimeHistogram: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Namespace: "lnd",
@@ -192,7 +202,7 @@ func (h *htlcMonitor) processHtlcEvent(event *routerrpc.HtlcEvent) error {
 
 	ts := time.Unix(0, int64(event.TimestampNs))
 
-	switch event.Event.(type) {
+	switch e := event.Event.(type) {
 	// If we have received a forwarding event, we add it to our map if it
 	// is not already present. We are ok with duplicate events, because
 	// htlcs are sometimes replayed by the switch, but we want to keep our
@@ -207,19 +217,23 @@ func (h *htlcMonitor) processHtlcEvent(event *routerrpc.HtlcEvent) error {
 		h.activeHtlcs[key] = ts
 
 	case *routerrpc.HtlcEvent_SettleEvent:
-		err := h.recordResolution(key, event.EventType, ts, true)
+		err := h.recordResolution(key, event.EventType, ts, "")
 		if err != nil {
 			return err
 		}
 
 	case *routerrpc.HtlcEvent_ForwardFailEvent:
-		err := h.recordResolution(key, event.EventType, ts, false)
+		err := h.recordResolution(
+			key, event.EventType, ts, failureReasonExternal,
+		)
 		if err != nil {
 			return err
 		}
 
 	case *routerrpc.HtlcEvent_LinkFailEvent:
-		err := h.recordResolution(key, event.EventType, ts, false)
+		err := h.recordResolution(
+			key, event.EventType, ts, e.LinkFailEvent.FailureString,
+		)
 		if err != nil {
 			return err
 		}
@@ -232,12 +246,15 @@ func (h *htlcMonitor) processHtlcEvent(event *routerrpc.HtlcEvent) error {
 }
 
 // recordResolution records the outcome of a htlc resolution (settle/fail) in
-// our metrics.
+// our metrics. The failure reason string should be empty for all successful
+// forwards, and populated for all failures.
 func (h *htlcMonitor) recordResolution(key htlcswitch.HtlcKey,
 	eventType routerrpc.HtlcEvent_EventType, ts time.Time,
-	success bool) error {
+	failureReason string) error {
 
-	// Create the set of labels we want to track this resolution.
+	// Create the set of labels we want to track this resolution. Remove
+	// spaces from our failure reason so that it can be used as a prometheus
+	// label.
 	labels := map[string]string{
 		outcomeLabel: outcomeFailedValue,
 		chanInLabel: strconv.FormatUint(
@@ -246,8 +263,11 @@ func (h *htlcMonitor) recordResolution(key htlcswitch.HtlcKey,
 		chanOutLabel: strconv.FormatUint(
 			key.OutgoingCircuit.ChanID.ToUint64(), 10,
 		),
+		failureReasonLabel: strings.ToLower(strings.ReplaceAll(
+			failureReason, " ", "_",
+		)),
 	}
-	if success {
+	if failureReason == "" {
 		labels[outcomeLabel] = outcomeSettledValue
 	}
 
@@ -285,8 +305,18 @@ func (h *htlcMonitor) recordResolution(key htlcswitch.HtlcKey,
 		return nil
 	}
 
+	// We make a copy of our labels rather than delete the unneeded failure
+	// reason label so that we don't run into any unexpected behaviour from
+	// map references.
+	histogramLabels := make(map[string]string, len(htlcLabels))
+	for _, label := range htlcLabels {
+		histogramLabels[label] = labels[label]
+	}
+
 	// Add the amount of time the htlc took to resolve to our histogram.
-	h.resolutionTimeHistogram.With(labels).Observe(ts.Sub(fwdTs).Seconds())
+	h.resolutionTimeHistogram.With(
+		histogramLabels,
+	).Observe(ts.Sub(fwdTs).Seconds())
 
 	// Delete the htlc from our set of active htlcs.
 	delete(h.activeHtlcs, key)
