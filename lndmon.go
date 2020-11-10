@@ -73,13 +73,18 @@ func start() error {
 
 	// Wait to get the signal to shutdown, or for an error to occur with
 	// our metric export.
+	var stopErr error
 	select {
 	case <-signal.ShutdownChannel():
 		fmt.Println("Exiting lndmon.")
-		return nil
 
-	case err := <-exporter.Errors():
-		fmt.Printf("Lndmon exiting with error: %v\n", err)
-		return err
+	case stopErr = <-exporter.Errors():
+		fmt.Printf("Lndmon exiting with error: %v\n", stopErr)
 	}
+
+	// Before we exit, stop our prometheus exporter, then return the error
+	// we originally exited for (if any).
+	exporter.Stop()
+
+	return stopErr
 }

@@ -17,6 +17,9 @@ var (
 
 	// Logger for lndmon's main process.
 	Logger = backendLog.Logger("LNDMON")
+
+	// htlcLogger is a logger for lndmon's htlc collector.
+	htlcLogger = build.NewSubLogger("HTLC", backendLog.Logger)
 )
 
 // initLogRotator initializes the logging rotator to write logs to logFile and
