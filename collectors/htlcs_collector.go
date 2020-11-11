@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/lightninglabs/lndclient"
 	"github.com/lightningnetwork/lnd/channeldb"
@@ -44,8 +45,13 @@ type htlcMonitor struct {
 	// htlcs.
 	resolvedCounter *prometheus.CounterVec
 
-	// activeHtlcs holds a map of our currently active htlcs.
-	activeHtlcs map[htlcswitch.HtlcKey]struct{}
+	// activeHtlcs holds a map of our currently active htlcs to their
+	// original forward time.
+	activeHtlcs map[htlcswitch.HtlcKey]time.Time
+
+	// resolutionTimeHistogram tracks the time it takes our htlcs to
+	// resolve.
+	resolutionTimeHistogram *prometheus.HistogramVec
 
 	// quit is closed to signal that we need to shutdown.
 	quit chan struct{}
@@ -62,13 +68,32 @@ func newHtlcMonitor(router lndclient.RouterClient,
 
 	return &htlcMonitor{
 		router:      router,
-		activeHtlcs: make(map[htlcswitch.HtlcKey]struct{}),
+		activeHtlcs: make(map[htlcswitch.HtlcKey]time.Time),
 		resolvedCounter: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "lnd",
 			Subsystem: "htlcs",
 			Name:      "resolved_htlcs",
 			Help:      "count of resolved htlcs",
 		}, htlcLabels),
+		resolutionTimeHistogram: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Namespace: "lnd",
+				Subsystem: "htlcs",
+				Name:      "resolution_time",
+				Help: "the time (in seconds) taken to " +
+					"resolve a htlc",
+				// Buckets are broken up into 1s/10s/1m/2m/5m/
+				// 10m and 1h/5h/1d/7d with the logic that if a
+				// payment doesn't resolve quickly, it will
+				// likely take very long.
+				Buckets: []float64{
+					1, 10, 60, 60 * 2, 60 * 5, 60 * 10,
+					60 * 60, 60 * 60 * 5, 60 * 60 * 24,
+					60 * 60 * 24 * 7,
+				},
+			},
+			htlcLabels,
+		),
 		quit:    make(chan struct{}),
 		errChan: errChan,
 	}
@@ -93,7 +118,7 @@ func (h *htlcMonitor) stop() {
 // collectors returns all of the collectors that the htlc monitor uses.
 func (h *htlcMonitor) collectors() []prometheus.Collector {
 	return []prometheus.Collector{
-		h.resolvedCounter,
+		h.resolvedCounter, h.resolutionTimeHistogram,
 	}
 }
 
@@ -165,6 +190,8 @@ func (h *htlcMonitor) processHtlcEvent(event *routerrpc.HtlcEvent) error {
 		},
 	}
 
+	ts := time.Unix(0, int64(event.TimestampNs))
+
 	switch event.Event.(type) {
 	// If we have received a forwarding event, we add it to our map if it
 	// is not already present. We are ok with duplicate events, because
@@ -177,22 +204,22 @@ func (h *htlcMonitor) processHtlcEvent(event *routerrpc.HtlcEvent) error {
 		}
 
 		// Add to our set of known active htlcs.
-		h.activeHtlcs[key] = struct{}{}
+		h.activeHtlcs[key] = ts
 
 	case *routerrpc.HtlcEvent_SettleEvent:
-		err := h.recordResolution(key, event.EventType, true)
+		err := h.recordResolution(key, event.EventType, ts, true)
 		if err != nil {
 			return err
 		}
 
 	case *routerrpc.HtlcEvent_ForwardFailEvent:
-		err := h.recordResolution(key, event.EventType, false)
+		err := h.recordResolution(key, event.EventType, ts, false)
 		if err != nil {
 			return err
 		}
 
 	case *routerrpc.HtlcEvent_LinkFailEvent:
-		err := h.recordResolution(key, event.EventType, false)
+		err := h.recordResolution(key, event.EventType, ts, false)
 		if err != nil {
 			return err
 		}
@@ -207,7 +234,8 @@ func (h *htlcMonitor) processHtlcEvent(event *routerrpc.HtlcEvent) error {
 // recordResolution records the outcome of a htlc resolution (settle/fail) in
 // our metrics.
 func (h *htlcMonitor) recordResolution(key htlcswitch.HtlcKey,
-	eventType routerrpc.HtlcEvent_EventType, success bool) error {
+	eventType routerrpc.HtlcEvent_EventType, ts time.Time,
+	success bool) error {
 
 	// Create the set of labels we want to track this resolution.
 	labels := map[string]string{
@@ -249,13 +277,16 @@ func (h *htlcMonitor) recordResolution(key htlcswitch.HtlcKey,
 	// worry if we can't find it because htlcs are only tracked in memory
 	// (we might have restarted after we forwarded it, so would not have it
 	// tracked).
-	_, ok := h.activeHtlcs[key]
+	fwdTs, ok := h.activeHtlcs[key]
 	if !ok {
 		htlcLogger.Infof("resolved htlc: %v original forward "+
 			"not found", key)
 
 		return nil
 	}
+
+	// Add the amount of time the htlc took to resolve to our histogram.
+	h.resolutionTimeHistogram.With(labels).Observe(ts.Sub(fwdTs).Seconds())
 
 	// Delete the htlc from our set of active htlcs.
 	delete(h.activeHtlcs, key)

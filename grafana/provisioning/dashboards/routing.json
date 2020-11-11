@@ -561,6 +561,253 @@
         "align": false,
         "alignLevel": null
       }
+    },
+    {
+      "aliasColors": {},
+      "bars": true,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "description": "A frequency distribution of the time ${HtlcType}s have taken to resolve. Note that this value is not tracked for receives.",
+      "fill": 1,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 11,
+      "interval": "",
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": false,
+        "total": false,
+        "values": false
+      },
+      "lines": false,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {},
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"1\",type=\"$HtlcType\"})",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "0-1 seconds",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"10\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"1\",type=\"$HtlcType\"})",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "1-10 seconds",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"60\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"10\",type=\"$HtlcType\"})",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "11-60 seconds",
+          "refId": "C"
+        },
+        {
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"120\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"60\",type=\"$HtlcType\"})",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "1-2 minutes",
+          "refId": "D"
+        },
+        {
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"300\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"120\",type=\"$HtlcType\"})",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "2-5 minutes",
+          "refId": "E"
+        },
+        {
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"600\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"300\",type=\"$HtlcType\"})",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "5-10 minutes",
+          "refId": "F"
+        },
+        {
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"3600\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"600\",type=\"$HtlcType\"})",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "10-60 minutes",
+          "refId": "G"
+        },
+        {
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"18000\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"3600\",type=\"$HtlcType\"})",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "1-5 hours",
+          "refId": "H"
+        },
+        {
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"86400\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"18000\",type=\"$HtlcType\"})",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "5-24 hours",
+          "refId": "I"
+        },
+        {
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"604800\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"86400\",type=\"$HtlcType\"})",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "1-7 days",
+          "refId": "J"
+        },
+        {
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"++Inf\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"604800\",type=\"$HtlcType\"})",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "> 7 days",
+          "refId": "K"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Htlc Resolution Time",
+      "tooltip": {
+        "shared": false,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "series",
+        "name": null,
+        "show": true,
+        "values": [
+          "max"
+        ]
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": "HTLC Count",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "description": "The average time taken to settle or fail HTLCs for ${HtlcType}s. Note that this value is not tracked for receives.",
+      "fill": 1,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "id": 13,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {},
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "sum(lnd_htlcs_resolution_time_sum{type=\"$HtlcType\"})/sum(lnd_htlcs_resolution_time_count{type=\"$HtlcType\"})",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "average",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Average HTLC Resolution Time",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "s",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true
+        },
+        {
+          "format": "s",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     }
   ],
   "refresh": false,
