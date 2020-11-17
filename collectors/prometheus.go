@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/btcsuite/btcutil"
-	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightninglabs/lndclient"
 	"github.com/lightningnetwork/lnd/routing/route"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -30,7 +30,7 @@ var (
 type PrometheusExporter struct {
 	cfg *PrometheusConfig
 
-	lnd lnrpc.LightningClient
+	lnd *lndclient.LndServices
 
 	monitoringCfg *MonitoringConfig
 }
@@ -71,7 +71,7 @@ func DefaultConfig() *PrometheusConfig {
 
 // NewPrometheusExporter makes a new instance of the PrometheusExporter given
 // the address to listen for Prometheus on and an lnd gRPC client.
-func NewPrometheusExporter(cfg *PrometheusConfig, lnd lnrpc.LightningClient,
+func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
 	monitoringCfg *MonitoringConfig) *PrometheusExporter {
 
 	return &PrometheusExporter{
@@ -136,12 +136,12 @@ func (p *PrometheusExporter) registerMetrics() error {
 	defer metricsMtx.Unlock()
 
 	collectors := []prometheus.Collector{
-		NewChainCollector(p.lnd),
-		NewChannelsCollector(p.lnd, p.monitoringCfg),
+		NewChainCollector(p.lnd.Client),
+		NewChannelsCollector(p.lnd.Client, p.monitoringCfg),
 		NewWalletCollector(p.lnd),
-		NewGraphCollector(p.lnd),
-		NewPeerCollector(p.lnd),
-		NewInfoCollector(p.lnd),
+		NewGraphCollector(p.lnd.Client),
+		NewPeerCollector(p.lnd.Client),
+		NewInfoCollector(p.lnd.Client),
 	}
 
 	for _, collector := range collectors {

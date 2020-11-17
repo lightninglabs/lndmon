@@ -4,14 +4,15 @@ import (
 	"context"
 	"math"
 
-	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/btcsuite/btcutil"
+	"github.com/lightninglabs/lndclient"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 // WalletCollector is a collector that will export metrics related to lnd's
 // on-chain wallet. .
 type WalletCollector struct {
-	lnd lnrpc.LightningClient
+	lnd *lndclient.LndServices
 
 	// We'll use two gauges to keep track of the total number of confirmed
 	// and unconfirmed UTXOs.
@@ -33,7 +34,7 @@ type WalletCollector struct {
 }
 
 // NewWalletCollector returns a new instance of the WalletCollector.
-func NewWalletCollector(lnd lnrpc.LightningClient) *WalletCollector {
+func NewWalletCollector(lnd *lndclient.LndServices) *WalletCollector {
 	txLabels := []string{"tx_hash"}
 	return &WalletCollector{
 		lnd: lnd,
@@ -95,10 +96,9 @@ func (u *WalletCollector) Describe(ch chan<- *prometheus.Desc) {
 func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 	// First, we'll fetch information w.r.t all UTXOs in the wallet. The
 	// large max confs value means we'll capture all the UTXOs.
-	req := &lnrpc.ListUnspentRequest{
-		MaxConfs: math.MaxInt32,
-	}
-	utxos, err := u.lnd.ListUnspent(context.Background(), req)
+	utxos, err := u.lnd.WalletKit.ListUnspent(
+		context.Background(), 0, math.MaxInt32,
+	)
 	if err != nil {
 		walletLogger.Error(err)
 		return
@@ -106,14 +106,13 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 
 	var (
 		numConf, numUnconf uint32
-		sum, max           int64
-		min                int64
+		sum, max, min      btcutil.Amount
 	)
 
 	// For each UTXO, we'll count the tally of confirmed vs unconfirmed,
 	// and also update the largest and smallest UTXO that we know of.
-	for _, utxo := range utxos.Utxos {
-		sum += utxo.AmountSat
+	for _, utxo := range utxos {
+		sum += utxo.Value
 
 		switch utxo.Confirmations {
 		case 0:
@@ -122,11 +121,11 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 			numConf++
 		}
 
-		if utxo.AmountSat > max {
-			max = utxo.AmountSat
+		if utxo.Value > max {
+			max = utxo.Value
 		}
-		if utxo.AmountSat < min || min == 0 {
-			min = utxo.AmountSat
+		if utxo.Value < min || min == 0 {
+			min = utxo.Value
 		}
 	}
 
@@ -154,9 +153,7 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 
 	// Next, we'll query the wallet to determine our confirmed and unconf
 	// balance at this instance.
-	walletBal, err := u.lnd.WalletBalance(
-		context.Background(), &lnrpc.WalletBalanceRequest{},
-	)
+	walletBal, err := u.lnd.Client.WalletBalance(context.Background())
 	if err != nil {
 		walletLogger.Error(err)
 		return
@@ -164,25 +161,25 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 
 	ch <- prometheus.MustNewConstMetric(
 		u.confirmedBalanceDesc, prometheus.GaugeValue,
-		float64(walletBal.ConfirmedBalance),
+		float64(walletBal.Confirmed),
 	)
 	ch <- prometheus.MustNewConstMetric(
 		u.unconfirmedBalanceDesc, prometheus.GaugeValue,
-		float64(walletBal.UnconfirmedBalance),
+		float64(walletBal.Unconfirmed),
 	)
 
-	getTxsResp, err := u.lnd.GetTransactions(
-		context.Background(), &lnrpc.GetTransactionsRequest{},
+	getTxsResp, err := u.lnd.Client.ListTransactions(
+		context.Background(), 0, 0,
 	)
 	if err != nil {
 		walletLogger.Error(err)
 		return
 	}
 
-	for _, tx := range getTxsResp.Transactions {
+	for _, tx := range getTxsResp {
 		ch <- prometheus.MustNewConstMetric(
 			u.txNumConfsDesc, prometheus.CounterValue,
-			float64(tx.NumConfirmations), tx.TxHash,
+			float64(tx.Confirmations), tx.TxHash,
 		)
 	}
 }

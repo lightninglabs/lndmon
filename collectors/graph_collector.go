@@ -3,7 +3,7 @@ package collectors
 import (
 	"context"
 
-	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightninglabs/lndclient"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -50,12 +50,12 @@ type GraphCollector struct {
 	minMaxHtlcMsatDesc    *prometheus.Desc
 	avgMaxHtlcMsatDesc    *prometheus.Desc
 
-	lnd lnrpc.LightningClient
+	lnd lndclient.LightningClient
 }
 
 // NewGraphCollector returns a new instance of the GraphCollector for the target
 // lnd client.
-func NewGraphCollector(lnd lnrpc.LightningClient) *GraphCollector {
+func NewGraphCollector(lnd lndclient.LightningClient) *GraphCollector {
 	return &GraphCollector{
 		numEdgesDesc: prometheus.NewDesc(
 			"lnd_graph_edges_count",
@@ -276,9 +276,7 @@ func (g *GraphCollector) Describe(ch chan<- *prometheus.Desc) {
 //
 // NOTE: Part of the prometheus.Collector interface.
 func (g *GraphCollector) Collect(ch chan<- prometheus.Metric) {
-	resp, err := g.lnd.DescribeGraph(
-		context.Background(), &lnrpc.ChannelGraphRequest{},
-	)
+	resp, err := g.lnd.DescribeGraph(context.Background(), false)
 	if err != nil {
 		graphLogger.Error(err)
 		return
@@ -295,9 +293,7 @@ func (g *GraphCollector) Collect(ch chan<- prometheus.Metric) {
 
 	g.collectRoutingPolicyMetrics(ch, resp.Edges)
 
-	networkInfo, err := g.lnd.GetNetworkInfo(
-		context.Background(), &lnrpc.NetworkInfoRequest{},
-	)
+	networkInfo, err := g.lnd.NetworkInfo(context.Background())
 	if err != nil {
 		graphLogger.Error(err)
 		return
@@ -341,12 +337,12 @@ func (g *GraphCollector) Collect(ch chan<- prometheus.Metric) {
 	)
 	ch <- prometheus.MustNewConstMetric(
 		g.medianChanSizeDesc, prometheus.GaugeValue,
-		float64(networkInfo.MedianChannelSizeSat),
+		float64(networkInfo.MedianChannelSize),
 	)
 }
 
 func (g *GraphCollector) collectRoutingPolicyMetrics(
-	ch chan<- prometheus.Metric, edges []*lnrpc.ChannelEdge) {
+	ch chan<- prometheus.Metric, edges []lndclient.ChannelEdge) {
 
 	// To compute the upper limit on the total number of edges, we multiply
 	// by two since we can have an edge in each direction.
@@ -363,7 +359,10 @@ func (g *GraphCollector) collectRoutingPolicyMetrics(
 	)
 
 	for _, edge := range edges {
-		policies := []*lnrpc.RoutingPolicy{edge.Node1Policy, edge.Node2Policy}
+		policies := []*lndclient.RoutingPolicy{
+			edge.Node1Policy, edge.Node2Policy,
+		}
+
 		for _, policy := range policies {
 			if policy == nil {
 				continue
@@ -371,7 +370,7 @@ func (g *GraphCollector) collectRoutingPolicyMetrics(
 
 			timelockStats.Observe(float64(policy.TimeLockDelta))
 
-			minHTLCStats.Observe(float64(policy.MinHtlc))
+			minHTLCStats.Observe(float64(policy.MinHtlcMsat))
 			maxHTLCStats.Observe(float64(policy.MaxHtlcMsat))
 
 			feeBaseStats.Observe(float64(policy.FeeBaseMsat))

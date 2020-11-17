@@ -2,8 +2,9 @@ package collectors
 
 import (
 	"context"
+	"encoding/hex"
 
-	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightninglabs/lndclient"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -11,12 +12,12 @@ import (
 type InfoCollector struct {
 	info *prometheus.Desc
 
-	lnd lnrpc.LightningClient
+	lnd lndclient.LightningClient
 }
 
 // NewInfoCollector returns a new instance of the InfoCollector for the target
 // lnd client.
-func NewInfoCollector(lnd lnrpc.LightningClient) *InfoCollector {
+func NewInfoCollector(lnd lndclient.LightningClient) *InfoCollector {
 	labels := []string{"version", "alias", "pubkey"}
 	return &InfoCollector{
 		info: prometheus.NewDesc(
@@ -39,14 +40,14 @@ func (c *InfoCollector) Describe(ch chan<- *prometheus.Desc) {
 //
 // NOTE: Part of the prometheus.Collector interface.
 func (c *InfoCollector) Collect(ch chan<- prometheus.Metric) {
-	resp, err := c.lnd.GetInfo(context.Background(), &lnrpc.GetInfoRequest{})
+	resp, err := c.lnd.GetInfo(context.Background())
 	if err != nil {
 		chainLogger.Error(err)
 		return
 	}
 
 	ch <- prometheus.MustNewConstMetric(
-		c.info, prometheus.GaugeValue,
-		0, resp.Version, resp.Alias, resp.IdentityPubkey,
+		c.info, prometheus.GaugeValue, 0, resp.Version,
+		resp.Alias, hex.EncodeToString(resp.IdentityPubkey[:]),
 	)
 }

@@ -3,7 +3,7 @@ package collectors
 import (
 	"context"
 
-	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightninglabs/lndclient"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -13,12 +13,12 @@ type ChainCollector struct {
 	bestBlockTimestamp *prometheus.Desc
 	syncedToChain      *prometheus.Desc
 
-	lnd lnrpc.LightningClient
+	lnd lndclient.LightningClient
 }
 
 // NewChainCollector returns a new instance of the ChainCollector for the target
 // lnd client.
-func NewChainCollector(lnd lnrpc.LightningClient) *ChainCollector {
+func NewChainCollector(lnd lndclient.LightningClient) *ChainCollector {
 	return &ChainCollector{
 		bestBlockHeight: prometheus.NewDesc(
 			"lnd_chain_block_height", "best block height from lnd",
@@ -53,7 +53,7 @@ func (c *ChainCollector) Describe(ch chan<- *prometheus.Desc) {
 //
 // NOTE: Part of the prometheus.Collector interface.
 func (c *ChainCollector) Collect(ch chan<- prometheus.Metric) {
-	resp, err := c.lnd.GetInfo(context.Background(), &lnrpc.GetInfoRequest{})
+	resp, err := c.lnd.GetInfo(context.Background())
 	if err != nil {
 		chainLogger.Error(err)
 		return
@@ -66,7 +66,7 @@ func (c *ChainCollector) Collect(ch chan<- prometheus.Metric) {
 
 	ch <- prometheus.MustNewConstMetric(
 		c.bestBlockTimestamp, prometheus.GaugeValue,
-		float64(resp.BestHeaderTimestamp),
+		float64(resp.BestHeaderTimeStamp.Unix()),
 	)
 
 	ch <- prometheus.MustNewConstMetric(
