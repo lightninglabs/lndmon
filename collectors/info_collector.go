@@ -2,8 +2,10 @@ package collectors
 
 import (
 	"context"
+	"encoding/hex"
+	"fmt"
 
-	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightninglabs/lndclient"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -11,18 +13,25 @@ import (
 type InfoCollector struct {
 	info *prometheus.Desc
 
-	lnd lnrpc.LightningClient
+	lnd lndclient.LightningClient
+
+	// errChan is a channel that we send any errors that we encounter into.
+	// This channel should be buffered so that it does not block sends.
+	errChan chan<- error
 }
 
 // NewInfoCollector returns a new instance of the InfoCollector for the target
 // lnd client.
-func NewInfoCollector(lnd lnrpc.LightningClient) *InfoCollector {
+func NewInfoCollector(lnd lndclient.LightningClient,
+	errChan chan<- error) *InfoCollector {
+
 	labels := []string{"version", "alias", "pubkey"}
 	return &InfoCollector{
 		info: prometheus.NewDesc(
 			"lnd_info", "lnd node info", labels, nil,
 		),
-		lnd: lnd,
+		lnd:     lnd,
+		errChan: errChan,
 	}
 }
 
@@ -39,14 +48,15 @@ func (c *InfoCollector) Describe(ch chan<- *prometheus.Desc) {
 //
 // NOTE: Part of the prometheus.Collector interface.
 func (c *InfoCollector) Collect(ch chan<- prometheus.Metric) {
-	resp, err := c.lnd.GetInfo(context.Background(), &lnrpc.GetInfoRequest{})
+	resp, err := c.lnd.GetInfo(context.Background())
 	if err != nil {
-		chainLogger.Error(err)
+		c.errChan <- fmt.Errorf("InfoCollector GetInfo failed with: "+
+			"%v", err)
 		return
 	}
 
 	ch <- prometheus.MustNewConstMetric(
-		c.info, prometheus.GaugeValue,
-		0, resp.Version, resp.Alias, resp.IdentityPubkey,
+		c.info, prometheus.GaugeValue, 0, resp.Version,
+		resp.Alias, hex.EncodeToString(resp.IdentityPubkey[:]),
 	)
 }

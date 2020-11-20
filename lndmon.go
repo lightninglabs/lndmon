@@ -3,13 +3,13 @@ package lndmon
 import (
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 
 	flags "github.com/jessevdk/go-flags"
+	"github.com/lightninglabs/lndclient"
 	"github.com/lightninglabs/lndmon/collectors"
-	"github.com/lightninglabs/loop/lndclient"
+	"github.com/lightningnetwork/lnd/lnrpc/verrpc"
 	"github.com/lightningnetwork/lnd/routing/route"
+	"github.com/lightningnetwork/lnd/signal"
 )
 
 // Main is the true entrypoint to lndmon.
@@ -30,14 +30,28 @@ func start() error {
 		return err
 	}
 
-	// Initialize our lnd client.
-	lnd, err := lndclient.NewBasicClient(
-		cfg.Lnd.Host, cfg.Lnd.TLSPath, cfg.Lnd.MacaroonDir,
-		cfg.Lnd.Network, lndclient.MacFilename("readonly.macaroon"),
+	if err := signal.Intercept(); err != nil {
+		return fmt.Errorf("could not intercept signal: %v", err)
+	}
+
+	// Initialize our lnd client, requiring at least lnd v0.11.
+	lnd, err := lndclient.NewLndServices(
+		&lndclient.LndServicesConfig{
+			LndAddress:         cfg.Lnd.Host,
+			Network:            lndclient.Network(cfg.Lnd.Network),
+			CustomMacaroonPath: "/root/.lnd/readonly.macaroon",
+			TLSPath:            cfg.Lnd.TLSPath,
+			CheckVersion: &verrpc.Version{
+				AppMajor: 0,
+				AppMinor: 11,
+				AppPatch: 0,
+			},
+		},
 	)
 	if err != nil {
 		return err
 	}
+	defer lnd.Close()
 
 	monitoringCfg := collectors.MonitoringConfig{}
 	if cfg.PrimaryNode != "" {
@@ -51,26 +65,26 @@ func start() error {
 	// Start our Prometheus exporter. This exporter spawns a goroutine
 	// that pulls metrics from our lnd client on a set interval.
 	exporter := collectors.NewPrometheusExporter(
-		cfg.Prometheus, lnd, &monitoringCfg,
+		cfg.Prometheus, &lnd.LndServices, &monitoringCfg,
 	)
 	if err := exporter.Start(); err != nil {
 		return err
 	}
 
-	// Wait for a signal to exit.
-	sigs := make(chan os.Signal, 1)
-	done := make(chan bool, 1)
+	// Wait to get the signal to shutdown, or for an error to occur with
+	// our metric export.
+	var stopErr error
+	select {
+	case <-signal.ShutdownChannel():
+		fmt.Println("Exiting lndmon.")
 
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	case stopErr = <-exporter.Errors():
+		fmt.Printf("Lndmon exiting with error: %v\n", stopErr)
+	}
 
-	go func() {
-		sig := <-sigs
-		fmt.Printf("Received quit signal: %v\n", sig)
-		done <- true
-	}()
+	// Before we exit, stop our prometheus exporter, then return the error
+	// we originally exited for (if any).
+	exporter.Stop()
 
-	<-done
-	fmt.Println("Exiting lndmon.")
-
-	return nil
+	return stopErr
 }

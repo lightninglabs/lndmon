@@ -2,8 +2,9 @@ package collectors
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightninglabs/lndclient"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -13,12 +14,18 @@ type ChainCollector struct {
 	bestBlockTimestamp *prometheus.Desc
 	syncedToChain      *prometheus.Desc
 
-	lnd lnrpc.LightningClient
+	lnd lndclient.LightningClient
+
+	// errChan is a channel that we send any errors that we encounter into.
+	// This channel should be buffered so that it does not block sends.
+	errChan chan<- error
 }
 
 // NewChainCollector returns a new instance of the ChainCollector for the target
 // lnd client.
-func NewChainCollector(lnd lnrpc.LightningClient) *ChainCollector {
+func NewChainCollector(lnd lndclient.LightningClient,
+	errChan chan<- error) *ChainCollector {
+
 	return &ChainCollector{
 		bestBlockHeight: prometheus.NewDesc(
 			"lnd_chain_block_height", "best block height from lnd",
@@ -34,7 +41,8 @@ func NewChainCollector(lnd lnrpc.LightningClient) *ChainCollector {
 			"lnd is synced to the chain",
 			nil, nil,
 		),
-		lnd: lnd,
+		lnd:     lnd,
+		errChan: errChan,
 	}
 }
 
@@ -53,9 +61,10 @@ func (c *ChainCollector) Describe(ch chan<- *prometheus.Desc) {
 //
 // NOTE: Part of the prometheus.Collector interface.
 func (c *ChainCollector) Collect(ch chan<- prometheus.Metric) {
-	resp, err := c.lnd.GetInfo(context.Background(), &lnrpc.GetInfoRequest{})
+	resp, err := c.lnd.GetInfo(context.Background())
 	if err != nil {
-		chainLogger.Error(err)
+		c.errChan <- fmt.Errorf("ChainCollector GetInfo failed with: "+
+			"%v", err)
 		return
 	}
 
@@ -66,7 +75,7 @@ func (c *ChainCollector) Collect(ch chan<- prometheus.Metric) {
 
 	ch <- prometheus.MustNewConstMetric(
 		c.bestBlockTimestamp, prometheus.GaugeValue,
-		float64(resp.BestHeaderTimestamp),
+		float64(resp.BestHeaderTimeStamp.Unix()),
 	)
 
 	ch <- prometheus.MustNewConstMetric(

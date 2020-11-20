@@ -6,18 +6,15 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/btcsuite/btcutil"
-	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightninglabs/lndclient"
 	"github.com/lightningnetwork/lnd/routing/route"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
-	metricsMtx sync.Mutex
-
 	// log configuration defaults.
 	defaultLogFilename = "lndmon.log"
 	defaultLogFileSize = 10
@@ -30,9 +27,18 @@ var (
 type PrometheusExporter struct {
 	cfg *PrometheusConfig
 
-	lnd lnrpc.LightningClient
+	lnd *lndclient.LndServices
 
 	monitoringCfg *MonitoringConfig
+
+	htlcMonitor *htlcMonitor
+
+	// collectors is the exporter's active set of collectors.
+	collectors []prometheus.Collector
+
+	// errChan is an error channel that we receive errors from our
+	// collectors on.
+	errChan <-chan error
 }
 
 // PrometheusConfig is the set of configuration data that specifies the
@@ -71,13 +77,36 @@ func DefaultConfig() *PrometheusConfig {
 
 // NewPrometheusExporter makes a new instance of the PrometheusExporter given
 // the address to listen for Prometheus on and an lnd gRPC client.
-func NewPrometheusExporter(cfg *PrometheusConfig, lnd lnrpc.LightningClient,
+func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
 	monitoringCfg *MonitoringConfig) *PrometheusExporter {
+
+	// We have six collectors and a htlc monitor running, so we buffer our
+	// error channel by 7 so that we do not need to consume all errors from
+	// this channel (on the first one, we'll start shutting down, but a few
+	// could arrive quickly in the case where lnd is shutting down).
+	errChan := make(chan error, 7)
+
+	htlcMonitor := newHtlcMonitor(lnd.Router, errChan)
 
 	return &PrometheusExporter{
 		cfg:           cfg,
 		lnd:           lnd,
 		monitoringCfg: monitoringCfg,
+		collectors: append(
+			[]prometheus.Collector{
+				NewChainCollector(lnd.Client, errChan),
+				NewChannelsCollector(
+					lnd.Client, errChan, monitoringCfg,
+				),
+				NewWalletCollector(lnd, errChan),
+				NewGraphCollector(lnd.Client, errChan),
+				NewPeerCollector(lnd.Client, errChan),
+				NewInfoCollector(lnd.Client, errChan),
+			},
+			htlcMonitor.collectors()...,
+		),
+		htlcMonitor: htlcMonitor,
+		errChan:     errChan,
 	}
 }
 
@@ -105,6 +134,12 @@ func (p *PrometheusExporter) Start() error {
 		return err
 	}
 
+	// Start the htlc monitor goroutine. This will subscribe to htlcs and
+	// update all of our routing-related metrics.
+	if err := p.htlcMonitor.start(); err != nil {
+		return err
+	}
+
 	// Finally, we'll launch the HTTP server that Prometheus will use to
 	// scape our metrics.
 	go func() {
@@ -128,23 +163,24 @@ func (p *PrometheusExporter) Start() error {
 	return nil
 }
 
+// Stop shuts down the prometheus exporter, waiting for all goroutines to exit
+// before returning.
+func (p *PrometheusExporter) Stop() {
+	log.Println("Stopping Prometheus Exporter")
+	p.htlcMonitor.stop()
+}
+
+// Errors returns an error channel that any failures experienced by its
+// collectors experience.
+func (p *PrometheusExporter) Errors() <-chan error {
+	return p.errChan
+}
+
 // registerMetrics iterates through all the registered collectors and attempts
 // to register each one. If any of the collectors fail to register, then an
 // error will be returned.
 func (p *PrometheusExporter) registerMetrics() error {
-	metricsMtx.Lock()
-	defer metricsMtx.Unlock()
-
-	collectors := []prometheus.Collector{
-		NewChainCollector(p.lnd),
-		NewChannelsCollector(p.lnd, p.monitoringCfg),
-		NewWalletCollector(p.lnd),
-		NewGraphCollector(p.lnd),
-		NewPeerCollector(p.lnd),
-		NewInfoCollector(p.lnd),
-	}
-
-	for _, collector := range collectors {
+	for _, collector := range p.collectors {
 		err := prometheus.Register(collector)
 		if err != nil {
 			return err

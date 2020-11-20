@@ -2,8 +2,10 @@ package collectors
 
 import (
 	"context"
+	"encoding/hex"
+	"fmt"
 
-	"github.com/lightningnetwork/lnd/lnrpc"
+	"github.com/lightninglabs/lndclient"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -19,12 +21,18 @@ type PeerCollector struct {
 	bytesSentDesc *prometheus.Desc
 	bytesRecvDesc *prometheus.Desc
 
-	lnd lnrpc.LightningClient
+	lnd lndclient.LightningClient
+
+	// errChan is a channel that we send any errors that we encounter into.
+	// This channel should be buffered so that it does not block sends.
+	errChan chan<- error
 }
 
 // NewPeerCollector returns a new instance of the PeerCollector for the target
 // lnd client.
-func NewPeerCollector(lnd lnrpc.LightningClient) *PeerCollector {
+func NewPeerCollector(lnd lndclient.LightningClient,
+	errChan chan<- error) *PeerCollector {
+
 	perPeerLabels := []string{"pubkey"}
 	return &PeerCollector{
 		peerCountDesc: prometheus.NewDesc(
@@ -53,7 +61,8 @@ func NewPeerCollector(lnd lnrpc.LightningClient) *PeerCollector {
 			"bytes transmitted from this peer",
 			perPeerLabels, nil,
 		),
-		lnd: lnd,
+		lnd:     lnd,
+		errChan: errChan,
 	}
 }
 
@@ -78,39 +87,40 @@ func (p *PeerCollector) Describe(ch chan<- *prometheus.Desc) {
 //
 // NOTE: Part of the prometheus.Collector interface.
 func (p *PeerCollector) Collect(ch chan<- prometheus.Metric) {
-	listPeersResp, err := p.lnd.ListPeers(
-		context.Background(), &lnrpc.ListPeersRequest{},
-	)
+	listPeersResp, err := p.lnd.ListPeers(context.Background())
 	if err != nil {
-		peerLogger.Error(err)
+		p.errChan <- fmt.Errorf("PeerCollector ListPeers failed with: "+
+			"%v", err)
 		return
 	}
 
 	ch <- prometheus.MustNewConstMetric(
 		p.peerCountDesc, prometheus.CounterValue,
-		float64(len(listPeersResp.Peers)),
+		float64(len(listPeersResp)),
 	)
 
-	for _, peer := range listPeersResp.Peers {
+	for _, peer := range listPeersResp {
+		pubkeyStr := hex.EncodeToString(peer.Pubkey[:])
+
 		ch <- prometheus.MustNewConstMetric(
 			p.pingTimeDesc, prometheus.CounterValue,
-			float64(peer.PingTime), peer.PubKey,
+			float64(peer.PingTime), pubkeyStr,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			p.satSentDesc, prometheus.GaugeValue,
-			float64(peer.SatSent), peer.PubKey,
+			float64(peer.Sent), pubkeyStr,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			p.satRecvDesc, prometheus.GaugeValue,
-			float64(peer.SatRecv), peer.PubKey,
+			float64(peer.Received), pubkeyStr,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			p.bytesSentDesc, prometheus.GaugeValue,
-			float64(peer.BytesSent), peer.PubKey,
+			float64(peer.BytesSent), pubkeyStr,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			p.bytesRecvDesc, prometheus.GaugeValue,
-			float64(peer.BytesRecv), peer.PubKey,
+			float64(peer.BytesReceived), pubkeyStr,
 		)
 	}
 }
