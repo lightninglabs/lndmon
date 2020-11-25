@@ -1,7 +1,18 @@
 package lndmon
 
 import (
+	"github.com/btcsuite/btcutil"
 	"github.com/lightninglabs/lndmon/collectors"
+)
+
+var (
+	// defaultMacaroonDir is the default path that we use to point lndmon
+	// to our macaroon. This default works for using lndmon in our docker
+	// compose setup.
+	defaultMacaroonDir = btcutil.AppDataDir("lnd", false)
+
+	// defaultMacaroon is the default macaroon that we use for lndmon.
+	defaultMacaroon = "readonly.macaroon"
 )
 
 type lndConfig struct {
@@ -14,6 +25,9 @@ type lndConfig struct {
 
 	// MacaroonDir is the path to lnd macaroons.
 	MacaroonDir string `long:"macaroondir" description:"Path to lnd macaroons"`
+
+	// MacaroonName is the name of the macaroon in macaroon dir to use.
+	MacaroonName string `long:"macaroonname" description:"The name of our macaroon in macaroon dir to use."`
 
 	// TLSPath is the path to the lnd TLS certificate.
 	TLSPath string `long:"tlspath" description:"Path to lnd tls certificate"`
@@ -34,8 +48,10 @@ type config struct {
 var defaultConfig = config{
 	Prometheus: collectors.DefaultConfig(),
 	Lnd: &lndConfig{
-		Host:    "localhost:10009",
-		Network: "mainnet",
+		Host:         "localhost:10009",
+		Network:      "mainnet",
+		MacaroonDir:  defaultMacaroonDir,
+		MacaroonName: defaultMacaroon,
 	},
 }
 
