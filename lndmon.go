@@ -3,6 +3,7 @@ package lndmon
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	flags "github.com/jessevdk/go-flags"
 	"github.com/lightninglabs/lndclient"
@@ -37,10 +38,12 @@ func start() error {
 	// Initialize our lnd client, requiring at least lnd v0.11.
 	lnd, err := lndclient.NewLndServices(
 		&lndclient.LndServicesConfig{
-			LndAddress:         cfg.Lnd.Host,
-			Network:            lndclient.Network(cfg.Lnd.Network),
-			CustomMacaroonPath: "/root/.lnd/readonly.macaroon",
-			TLSPath:            cfg.Lnd.TLSPath,
+			LndAddress: cfg.Lnd.Host,
+			Network:    lndclient.Network(cfg.Lnd.Network),
+			CustomMacaroonPath: filepath.Join(
+				cfg.Lnd.MacaroonDir, cfg.Lnd.MacaroonName,
+			),
+			TLSPath: cfg.Lnd.TLSPath,
 			CheckVersion: &verrpc.Version{
 				AppMajor: 0,
 				AppMinor: 11,
