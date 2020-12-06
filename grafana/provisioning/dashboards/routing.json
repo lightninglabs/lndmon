@@ -24,7 +24,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "description": "The rate at which HTLCs for ${HtlcType}s are settled and failed. Note that these values are recorded since lnd's last restart, and are not persisted. ",
       "fill": 1,
       "gridPos": {
@@ -113,7 +113,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "description": "The percentage of ${HtlcType}s that are successfully settled. Note that this rate is tracked since lnd's last restart, and is not persisted over time. ",
       "fill": 1,
       "gridPos": {
@@ -203,7 +203,7 @@
       "bars": true,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "description": "The number of HTLCs for ${HtlcType}s that each channel has settled as the incoming channel. ",
       "fill": 1,
       "gridPos": {
@@ -296,7 +296,7 @@
       "bars": true,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "description": "The number of HTLCs for ${HtlcType}s that each channel has settled as the outgoing channel. ",
       "fill": 1,
       "gridPos": {
@@ -388,7 +388,7 @@
       "bars": true,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "description": "The number of HTLCs for ${HtlcType}s that each channel has failed as the incoming channel. ",
       "fill": 1,
       "gridPos": {
@@ -480,7 +480,7 @@
       "bars": true,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "description": "The number of HTLCs for ${HtlcType}s that each channel has failed as the outgoing channel. ",
       "fill": 1,
       "gridPos": {
@@ -572,7 +572,7 @@
       "bars": true,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "description": "A frequency distribution of the time ${HtlcType}s have taken to resolve. Note that this value is not tracked for receives.",
       "fill": 1,
       "gridPos": {
@@ -732,7 +732,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "description": "The average time taken to settle or fail HTLCs for ${HtlcType}s. Note that this value is not tracked for receives.",
       "fill": 1,
       "gridPos": {
@@ -819,7 +819,7 @@
       "bars": true,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "description": "The reasons provided for htlcs involved in ${HtlcType}s on lnd's channels failing. Note that \"failed_back\" indicates that the payment failed further down the route, and all other failure reasons indicate that your node failed the htlc.",
       "fill": 1,
       "gridPos": {
