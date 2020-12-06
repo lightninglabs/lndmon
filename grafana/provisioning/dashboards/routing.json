@@ -911,6 +911,7 @@
   "schemaVersion": 18,
   "style": "dark",
   "tags": [],
+  "tags": ["lightning-network"],
   "templating": {
     "list": [
       {

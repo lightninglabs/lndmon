@@ -730,7 +730,7 @@
   "refresh": "5m",
   "schemaVersion": 18,
   "style": "dark",
-  "tags": ["ligithning-network"],
+  "tags": ["lightning-network"],
   "templating": {
     "list": [
       {
