@@ -30,9 +30,6 @@ type WalletCollector struct {
 	confirmedBalanceDesc   *prometheus.Desc
 	unconfirmedBalanceDesc *prometheus.Desc
 
-	// Per-transaction metrics.
-	txNumConfsDesc *prometheus.Desc
-
 	// errChan is a channel that we send any errors that we encounter into.
 	// This channel should be buffered so that it does not block sends.
 	errChan chan<- error
@@ -42,7 +39,6 @@ type WalletCollector struct {
 func NewWalletCollector(lnd *lndclient.LndServices,
 	errChan chan<- error) *WalletCollector {
 
-	txLabels := []string{"tx_hash"}
 	return &WalletCollector{
 		lnd: lnd,
 		numUtxosConfDesc: prometheus.NewDesc(
@@ -75,9 +71,6 @@ func NewWalletCollector(lnd *lndclient.LndServices,
 			"unconfirmed wallet balance",
 			nil, nil,
 		),
-		txNumConfsDesc: prometheus.NewDesc(
-			"lnd_tx_num_confs", "number of confs", txLabels, nil,
-		),
 		errChan: errChan,
 	}
 }
@@ -95,7 +88,6 @@ func (u *WalletCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- u.avgUtxoSizeDesc
 	ch <- u.confirmedBalanceDesc
 	ch <- u.unconfirmedBalanceDesc
-	ch <- u.txNumConfsDesc
 }
 
 // Collect is called by the Prometheus registry when collecting metrics.
@@ -177,20 +169,4 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 		u.unconfirmedBalanceDesc, prometheus.GaugeValue,
 		float64(walletBal.Unconfirmed),
 	)
-
-	getTxsResp, err := u.lnd.Client.ListTransactions(
-		context.Background(), 0, 0,
-	)
-	if err != nil {
-		u.errChan <- fmt.Errorf("WalletCollector ListTransactions "+
-			"failed with: %v", err)
-		return
-	}
-
-	for _, tx := range getTxsResp {
-		ch <- prometheus.MustNewConstMetric(
-			u.txNumConfsDesc, prometheus.CounterValue,
-			float64(tx.Confirmations), tx.TxHash,
-		)
-	}
 }
