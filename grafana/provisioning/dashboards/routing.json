@@ -58,7 +58,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "irate(sum by(outcome)(lnd_htlcs_resolved_htlcs{type=\"$HtlcType\"})[5m:1s])",
+          "expr": "increase(sum by(outcome)(lnd_htlcs_resolved_htlcs{type=\"$HtlcType\"})[5m:1s])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{outcome}}",
