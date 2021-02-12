@@ -99,7 +99,7 @@ func NewChannelsCollector(lnd lndclient.LightningClient, errChan chan<- error,
 		numPendingChansDesc: prometheus.NewDesc(
 			"lnd_channels_pending_total",
 			"total number of inactive channels",
-			nil, nil,
+			[]string{"state"}, nil,
 		),
 		csvDelayDesc: prometheus.NewDesc(
 			"lnd_channels_csv_delay",
@@ -237,10 +237,6 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 		c.numInactiveChansDesc, prometheus.GaugeValue,
 		float64(getInfoResp.InactiveChannels),
 	)
-	ch <- prometheus.MustNewConstMetric(
-		c.numPendingChansDesc, prometheus.GaugeValue,
-		float64(getInfoResp.PendingChannels),
-	)
 
 	// Next, for each channel we'll export the total sum of our balances,
 	// as well as the number of pending HTLCs.
@@ -351,6 +347,29 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 			)
 		}
 	}
+
+	// Get the list of pending channels
+	pendingChannelsResp, err := c.lnd.PendingChannels(context.Background())
+	if err != nil {
+		c.errChan <- fmt.Errorf("ChannelsCollector PendingChannels "+
+			"failed with: %v", err)
+		return
+	}
+	ch <- prometheus.MustNewConstMetric(
+		c.numPendingChansDesc, prometheus.GaugeValue,
+		float64(len(pendingChannelsResp.PendingForceClose)),
+		"pending_force_close",
+	)
+	ch <- prometheus.MustNewConstMetric(
+		c.numPendingChansDesc, prometheus.GaugeValue,
+		float64(len(pendingChannelsResp.PendingOpen)),
+		"pending_open",
+	)
+	ch <- prometheus.MustNewConstMetric(
+		c.numPendingChansDesc, prometheus.GaugeValue,
+		float64(len(pendingChannelsResp.WaitingClose)),
+		"waiting_close",
+	)
 
 	// Get all remote policies
 	remotePolicies, err := c.getRemotePolicies(getInfoResp.IdentityPubkey)
