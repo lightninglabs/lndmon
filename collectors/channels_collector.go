@@ -23,6 +23,7 @@ type ChannelsCollector struct {
 	numActiveChansDesc   *prometheus.Desc
 	numInactiveChansDesc *prometheus.Desc
 	numPendingChansDesc  *prometheus.Desc
+	numClosedChannels    *prometheus.Desc
 
 	satsSentDesc *prometheus.Desc
 	satsRecvDesc *prometheus.Desc
@@ -99,7 +100,12 @@ func NewChannelsCollector(lnd lndclient.LightningClient, errChan chan<- error,
 		numPendingChansDesc: prometheus.NewDesc(
 			"lnd_channels_pending_total",
 			"total number of inactive channels",
-			nil, nil,
+			[]string{"state"}, nil,
+		),
+		numClosedChannels: prometheus.NewDesc(
+			"lnd_closed_channels_total",
+			"total number of closed channels",
+			[]string{"close_type"}, nil,
 		),
 		csvDelayDesc: prometheus.NewDesc(
 			"lnd_channels_csv_delay",
@@ -237,10 +243,6 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 		c.numInactiveChansDesc, prometheus.GaugeValue,
 		float64(getInfoResp.InactiveChannels),
 	)
-	ch <- prometheus.MustNewConstMetric(
-		c.numPendingChansDesc, prometheus.GaugeValue,
-		float64(getInfoResp.PendingChannels),
-	)
 
 	// Next, for each channel we'll export the total sum of our balances,
 	// as well as the number of pending HTLCs.
@@ -352,6 +354,53 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 
+	// Get the list of pending channels
+	pendingChannelsResp, err := c.lnd.PendingChannels(context.Background())
+	if err != nil {
+		c.errChan <- fmt.Errorf("ChannelsCollector PendingChannels "+
+			"failed with: %v", err)
+		return
+	}
+	ch <- prometheus.MustNewConstMetric(
+		c.numPendingChansDesc, prometheus.GaugeValue,
+		float64(len(pendingChannelsResp.PendingForceClose)),
+		"pending_force_close",
+	)
+	ch <- prometheus.MustNewConstMetric(
+		c.numPendingChansDesc, prometheus.GaugeValue,
+		float64(len(pendingChannelsResp.PendingOpen)),
+		"pending_open",
+	)
+	ch <- prometheus.MustNewConstMetric(
+		c.numPendingChansDesc, prometheus.GaugeValue,
+		float64(len(pendingChannelsResp.WaitingClose)),
+		"waiting_close",
+	)
+
+	// Get the list of closed channels.
+	closedChannelsResp, err := c.lnd.ClosedChannels(context.Background())
+	if err != nil {
+		c.errChan <- fmt.Errorf("ChannelsCollector ClosedChannels "+
+			"failed with: %v", err)
+		return
+	}
+	closeCounts := make(map[string]int)
+	for _, channel := range closedChannelsResp {
+		typeString, ok := closeTypeLabelMap[channel.CloseType]
+		if !ok {
+			Logger.Warnf("Unrecognized close type: %v", channel.CloseType)
+			continue
+		}
+		closeCounts[typeString]++
+	}
+	for _, closeType := range closeTypeLabelMap {
+		count := closeCounts[closeType]
+		ch <- prometheus.MustNewConstMetric(
+			c.numClosedChannels, prometheus.GaugeValue,
+			float64(count), closeType,
+		)
+	}
+
 	// Get all remote policies
 	remotePolicies, err := c.getRemotePolicies(getInfoResp.IdentityPubkey)
 	if err != nil {
@@ -384,6 +433,15 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 		// Continue the series with double the amount.
 		receiveAmt *= 2
 	}
+}
+
+var closeTypeLabelMap = map[lndclient.CloseType]string{
+	lndclient.CloseTypeCooperative:      "cooperative",
+	lndclient.CloseTypeLocalForce:       "local_force",
+	lndclient.CloseTypeRemoteForce:      "remote_force",
+	lndclient.CloseTypeBreach:           "breach",
+	lndclient.CloseTypeFundingCancelled: "funding_cancelled",
+	lndclient.CloseTypeAbandoned:        "abandoned",
 }
 
 // approximateInboundFee calculates to forward fee for a specific amount charged by the
