@@ -58,7 +58,7 @@ func NewChannelsCollector(lnd lndclient.LightningClient, errChan chan<- error,
 
 	// Our set of labels, status should either be active or inactive. The
 	// initiator is "true" if we are the initiator, and "false" otherwise.
-	labels := []string{"chan_id", "status", "initiator"}
+	labels := []string{"chan_id", "status", "initiator", "peer"}
 	return &ChannelsCollector{
 		channelBalanceDesc: prometheus.NewDesc(
 			"lnd_channels_open_balance_sat",
@@ -277,6 +277,7 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 	for _, channel := range listChannelsResp {
 		status := statusLabel(channel)
 		initiator := initiatorLabel(channel)
+		peer := channel.PubKeyBytes.String()
 
 		chanIdStr := strconv.Itoa(int(channel.ChannelID))
 
@@ -292,56 +293,57 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(
 			c.incomingChanSatDesc, prometheus.GaugeValue,
 			float64(channel.RemoteBalance), chanIdStr, status,
-			initiator,
+			initiator, peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.outgoingChanSatDesc, prometheus.GaugeValue,
 			float64(channel.LocalBalance), chanIdStr, status,
-			initiator,
+			initiator, peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.numPendingHTLCsDesc, prometheus.GaugeValue,
 			float64(channel.NumPendingHtlcs), chanIdStr, status,
-			initiator,
+			initiator, peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.satsSentDesc, prometheus.GaugeValue,
 			float64(channel.TotalSent), chanIdStr, status,
-			initiator,
+			initiator, peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.satsRecvDesc, prometheus.GaugeValue,
 			float64(channel.TotalReceived), chanIdStr, status,
-			initiator,
+			initiator, peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.numUpdatesDesc, prometheus.GaugeValue,
 			float64(channel.NumUpdates), chanIdStr, status,
-			initiator,
+			initiator, peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.csvDelayDesc, prometheus.GaugeValue,
 			float64(channel.LocalConstraints.CsvDelay), chanIdStr,
-			status, initiator,
+			status, initiator, peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.unsettledBalanceDesc, prometheus.GaugeValue,
 			float64(channel.UnsettledBalance), chanIdStr, status,
-			initiator,
+			initiator, peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.feePerKwDesc, prometheus.GaugeValue,
 			float64(channel.FeePerKw), chanIdStr, status, initiator,
+			peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.commitWeightDesc, prometheus.GaugeValue,
 			float64(channel.CommitWeight), chanIdStr, status,
-			initiator,
+			initiator, peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.commitFeeDesc, prometheus.GaugeValue,
 			float64(channel.CommitFee), chanIdStr, status,
-			initiator,
+			initiator, peer,
 		)
 
 		// Only record uptime if the channel has been monitored.
@@ -349,7 +351,7 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 			ch <- prometheus.MustNewConstMetric(
 				c.channelUptimeDesc, prometheus.GaugeValue,
 				float64(channel.Uptime)/float64(channel.LifeTime),
-				chanIdStr, status, initiator,
+				chanIdStr, status, initiator, peer,
 			)
 		}
 	}
