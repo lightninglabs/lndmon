@@ -64,6 +64,9 @@ type MonitoringConfig struct {
 	// PrimaryNode is the pubkey of the primary node in primary-gateway
 	// setups.
 	PrimaryNode *route.Vertex
+
+	// DisableGraph disables collection of graph metrics
+	DisableGraph bool
 }
 
 func DefaultConfig() *PrometheusConfig {
@@ -88,25 +91,30 @@ func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
 
 	htlcMonitor := newHtlcMonitor(lnd.Router, errChan)
 
+	collectors := append(
+		[]prometheus.Collector{
+			NewChainCollector(lnd.Client, errChan),
+			NewChannelsCollector(
+				lnd.Client, errChan, monitoringCfg,
+			),
+			NewWalletCollector(lnd, errChan),
+			NewPeerCollector(lnd.Client, errChan),
+			NewInfoCollector(lnd.Client, errChan),
+		},
+		htlcMonitor.collectors()...,
+	)
+
+	if !monitoringCfg.DisableGraph {
+		collectors = append(collectors, NewGraphCollector(lnd.Client, errChan))
+	}
+
 	return &PrometheusExporter{
 		cfg:           cfg,
 		lnd:           lnd,
 		monitoringCfg: monitoringCfg,
-		collectors: append(
-			[]prometheus.Collector{
-				NewChainCollector(lnd.Client, errChan),
-				NewChannelsCollector(
-					lnd.Client, errChan, monitoringCfg,
-				),
-				NewWalletCollector(lnd, errChan),
-				NewGraphCollector(lnd.Client, errChan),
-				NewPeerCollector(lnd.Client, errChan),
-				NewInfoCollector(lnd.Client, errChan),
-			},
-			htlcMonitor.collectors()...,
-		),
-		htlcMonitor: htlcMonitor,
-		errChan:     errChan,
+		collectors:    collectors,
+		htlcMonitor:   htlcMonitor,
+		errChan:       errChan,
 	}
 }
 

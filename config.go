@@ -43,6 +43,9 @@ type config struct {
 
 	// PrimaryNode is the pubkey of the primary node in primary-gateway setups.
 	PrimaryNode string `long:"primarynode" description:"Public key of the primary node in a primary-gateway setup"`
+
+	// DisableGraph disables collection of graph metrics
+	DisableGraph bool `long:"disablegraph" description:"Do not collect graph metrics"`
 }
 
 var defaultConfig = config{
