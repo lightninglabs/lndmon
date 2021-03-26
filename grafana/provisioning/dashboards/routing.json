@@ -24,7 +24,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "description": "The rate at which HTLCs for ${HtlcType}s are settled and failed. Note that these values are recorded since lnd's last restart, and are not persisted. ",
       "fill": 1,
       "gridPos": {
@@ -58,7 +58,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "increase(sum by(outcome)(lnd_htlcs_resolved_htlcs{type=\"$HtlcType\"})[5m:1s])",
+          "expr": "increase(sum by(outcome)(lnd_htlcs_resolved_htlcs{type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})[5m:1s])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{outcome}}",
@@ -113,7 +113,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "description": "The percentage of ${HtlcType}s that are successfully settled. Note that this rate is tracked since lnd's last restart, and is not persisted over time. ",
       "fill": 1,
       "gridPos": {
@@ -147,7 +147,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(lnd_htlcs_resolved_htlcs{outcome=\"settled\",type=\"$HtlcType\"})/ sum(lnd_htlcs_resolved_htlcs{type=\"$HtlcType\"})",
+          "expr": "sum(lnd_htlcs_resolved_htlcs{outcome=\"settled\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})/ sum(lnd_htlcs_resolved_htlcs{type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -203,7 +203,7 @@
       "bars": true,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "description": "The number of HTLCs for ${HtlcType}s that each channel has settled as the incoming channel. ",
       "fill": 1,
       "gridPos": {
@@ -239,7 +239,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum by (chan_in)(lnd_htlcs_resolved_htlcs{outcome=\"settled\",type=\"$HtlcType\"})",
+          "expr": "sum by (chan_in)(lnd_htlcs_resolved_htlcs{outcome=\"settled\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{chan_in}}",
@@ -296,7 +296,7 @@
       "bars": true,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "description": "The number of HTLCs for ${HtlcType}s that each channel has settled as the outgoing channel. ",
       "fill": 1,
       "gridPos": {
@@ -331,7 +331,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum by (chan_out)(lnd_htlcs_resolved_htlcs{outcome=\"settled\",type=\"$HtlcType\"})",
+          "expr": "sum by (chan_out)(lnd_htlcs_resolved_htlcs{outcome=\"settled\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{chan_out}}",
@@ -388,7 +388,7 @@
       "bars": true,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "description": "The number of HTLCs for ${HtlcType}s that each channel has failed as the incoming channel. ",
       "fill": 1,
       "gridPos": {
@@ -423,7 +423,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum by (chan_in)(lnd_htlcs_resolved_htlcs{outcome=\"failed\",type=\"$HtlcType\"})",
+          "expr": "sum by (chan_in)(lnd_htlcs_resolved_htlcs{outcome=\"failed\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{chan_in}}",
@@ -480,7 +480,7 @@
       "bars": true,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "description": "The number of HTLCs for ${HtlcType}s that each channel has failed as the outgoing channel. ",
       "fill": 1,
       "gridPos": {
@@ -515,7 +515,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum by (chan_out)(lnd_htlcs_resolved_htlcs{outcome=\"failed\", type=\"$HtlcType\"})",
+          "expr": "sum by (chan_out)(lnd_htlcs_resolved_htlcs{outcome=\"failed\", type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{chan_out}}",
@@ -572,7 +572,7 @@
       "bars": true,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "description": "A frequency distribution of the time ${HtlcType}s have taken to resolve. Note that this value is not tracked for receives.",
       "fill": 1,
       "gridPos": {
@@ -607,77 +607,77 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"1\",type=\"$HtlcType\"})",
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"1\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "0-1 seconds",
           "refId": "A"
         },
         {
-          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"10\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"1\",type=\"$HtlcType\"})",
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"10\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"1\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "1-10 seconds",
           "refId": "B"
         },
         {
-          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"60\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"10\",type=\"$HtlcType\"})",
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"60\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"10\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "11-60 seconds",
           "refId": "C"
         },
         {
-          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"120\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"60\",type=\"$HtlcType\"})",
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"120\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"60\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "1-2 minutes",
           "refId": "D"
         },
         {
-          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"300\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"120\",type=\"$HtlcType\"})",
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"300\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"120\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "2-5 minutes",
           "refId": "E"
         },
         {
-          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"600\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"300\",type=\"$HtlcType\"})",
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"600\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"300\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "5-10 minutes",
           "refId": "F"
         },
         {
-          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"3600\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"600\",type=\"$HtlcType\"})",
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"3600\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"600\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "10-60 minutes",
           "refId": "G"
         },
         {
-          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"18000\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"3600\",type=\"$HtlcType\"})",
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"18000\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"3600\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "1-5 hours",
           "refId": "H"
         },
         {
-          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"86400\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"18000\",type=\"$HtlcType\"})",
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"86400\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"18000\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "5-24 hours",
           "refId": "I"
         },
         {
-          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"604800\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"86400\",type=\"$HtlcType\"})",
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"604800\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"86400\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "1-7 days",
           "refId": "J"
         },
         {
-          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"++Inf\",type=\"$HtlcType\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"604800\",type=\"$HtlcType\"})",
+          "expr": "sum(lnd_htlcs_resolution_time_bucket{le=\"++Inf\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"}) - ignoring(le) sum(lnd_htlcs_resolution_time_bucket{le=\"604800\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "> 7 days",
@@ -732,7 +732,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "description": "The average time taken to settle or fail HTLCs for ${HtlcType}s. Note that this value is not tracked for receives.",
       "fill": 1,
       "gridPos": {
@@ -766,7 +766,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(lnd_htlcs_resolution_time_sum{type=\"$HtlcType\"})/sum(lnd_htlcs_resolution_time_count{type=\"$HtlcType\"})",
+          "expr": "sum(lnd_htlcs_resolution_time_sum{type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})/sum(lnd_htlcs_resolution_time_count{type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "average",
@@ -819,7 +819,7 @@
       "bars": true,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "description": "The reasons provided for htlcs involved in ${HtlcType}s on lnd's channels failing. Note that \"failed_back\" indicates that the payment failed further down the route, and all other failure reasons indicate that your node failed the htlc.",
       "fill": 1,
       "gridPos": {
@@ -854,7 +854,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum by (failure_reason)(lnd_htlcs_resolved_htlcs{outcome=\"failed\",type=\"$HtlcType\"})",
+          "expr": "sum by (failure_reason)(lnd_htlcs_resolved_htlcs{outcome=\"failed\",type=\"$HtlcType\",namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{failure_reason}}",
@@ -911,8 +911,69 @@
   "schemaVersion": 18,
   "style": "dark",
   "tags": [],
+  "tags": ["lightning-network"],
   "templating": {
     "list": [
+      {
+        "current": {
+          "tags": [],
+          "text": "default",
+          "value": "default"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": null,
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "allValue": null,
+        "datasource": "$datasource",
+        "definition": "label_values(namespace)",
+        "hide": 0,
+        "includeAll": false,
+        "label": "namespace",
+        "multi": false,
+        "name": "namespace",
+        "options": [],
+        "query": "label_values(namespace)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 5,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "datasource": "$datasource",
+        "definition": "label_values(lnd_chain_block_timestamp{namespace=\"$namespace\"}, pod)",
+        "hide": 0,
+        "includeAll": false,
+        "label": "node",
+        "multi": false,
+        "name": "node",
+        "options": [],
+        "query": "label_values(lnd_chain_block_timestamp{namespace=\"$namespace\"}, pod)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
       {
         "allValue": null,
         "current": {

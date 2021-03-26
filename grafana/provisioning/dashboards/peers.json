@@ -23,7 +23,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "fill": 1,
       "gridPos": {
         "h": 9,
@@ -56,7 +56,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "lnd_peer_count",
+          "expr": "lnd_peer_count{namespace=\"$namespace\",pod=\"$node\"}",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "num_peers",
@@ -109,7 +109,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "fill": 1,
       "gridPos": {
         "h": 9,
@@ -142,7 +142,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "deriv(lnd_peer_count[40s])",
+          "expr": "deriv(lnd_peer_count{namespace=\"$namespace\",pod=\"$node\"}[40s])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "peer_count_deriv",
@@ -195,7 +195,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "fill": 1,
       "gridPos": {
         "h": 8,
@@ -228,7 +228,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "irate(lnd_peer_sent_byte[5m])",
+          "expr": "irate(lnd_peer_sent_byte{namespace=\"$namespace\",pod=\"$node\"}[5m])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{ pubkey }}",
@@ -281,7 +281,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "fill": 1,
       "gridPos": {
         "h": 8,
@@ -314,7 +314,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "irate(lnd_peer_recv_byte[5m])",
+          "expr": "irate(lnd_peer_recv_byte{namespace=\"$namespace\",pod=\"$node\"}[5m])",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{ pubkey }}",
@@ -367,7 +367,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "fill": 1,
       "gridPos": {
         "h": 7,
@@ -400,21 +400,21 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "min((lnd_peer_ping_time_microsecond > 0) / 1000)",
+          "expr": "min((lnd_peer_ping_time_microsecond{namespace=\"$namespace\",pod=\"$node\"} > 0) / 1000)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "min_ping_ms ",
           "refId": "A"
         },
         {
-          "expr": "max(lnd_peer_ping_time_microsecond / 1000)",
+          "expr": "max(lnd_peer_ping_time_microsecond{namespace=\"$namespace\",pod=\"$node\"} / 1000)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "max_ping_ms",
           "refId": "B"
         },
         {
-          "expr": "avg(lnd_peer_ping_time_microsecond / 1000)",
+          "expr": "avg(lnd_peer_ping_time_microsecond{namespace=\"$namespace\",pod=\"$node\"} / 1000)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "avg_ping_ms",
@@ -467,7 +467,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "fill": 1,
       "gridPos": {
         "h": 7,
@@ -502,7 +502,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "topk(5, lnd_peer_sent_byte)",
+          "expr": "topk(5, lnd_peer_sent_byte{namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{ pubkey }}",
@@ -555,7 +555,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "fill": 1,
       "gridPos": {
         "h": 8,
@@ -590,7 +590,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "topk(5, lnd_peer_recv_byte)",
+          "expr": "topk(5, lnd_peer_recv_byte{namespace=\"$namespace\",pod=\"$node\"})",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{ pubkey }}",
@@ -643,7 +643,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "Prometheus",
+      "datasource": "$datasource",
       "fill": 1,
       "gridPos": {
         "h": 9,
@@ -678,7 +678,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "topk(5, lnd_peer_sent_sat + lnd_peer_recv_sat > 0)",
+          "expr": "topk(5, lnd_peer_sent_sat{namespace=\"$namespace\",pod=\"$node\"} + lnd_peer_recv_sat{namespace=\"$namespace\",pod=\"$node\"} > 0)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{ pubkey }} ",
@@ -730,9 +730,70 @@
   "refresh": "5m",
   "schemaVersion": 18,
   "style": "dark",
-  "tags": [],
+  "tags": ["lightning-network"],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "tags": [],
+          "text": "default",
+          "value": "default"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": null,
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "allValue": null,
+        "datasource": "$datasource",
+        "definition": "label_values(namespace)",
+        "hide": 0,
+        "includeAll": false,
+        "label": "namespace",
+        "multi": false,
+        "name": "namespace",
+        "options": [],
+        "query": "label_values(namespace)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 5,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "datasource": "$datasource",
+        "definition": "label_values(lnd_chain_block_timestamp{namespace=\"$namespace\"}, pod)",
+        "hide": 0,
+        "includeAll": false,
+        "label": "node",
+        "multi": false,
+        "name": "node",
+        "options": [],
+        "query": "label_values(lnd_chain_block_timestamp{namespace=\"$namespace\"}, pod)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      }
+    ]
   },
   "time": {
     "from": "now-30m",
