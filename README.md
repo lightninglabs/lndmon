@@ -48,7 +48,7 @@ the addition of 3000 channels to the network!").
 
 ## How do I install this?
 
-Head over to `INSTALL.md` in the same directory as this readme. `INSTALL.md`
+Head over to [`INSTALL.md`](https://github.com/lightninglabs/lndmon/blob/master/INSTALL.md). It
 also includes instructions to set up, access, and password-protect the dashboard
 that comes with Prometheus, called the Prometheus expression browser, for those
 interested in using it.
