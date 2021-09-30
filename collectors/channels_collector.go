@@ -246,7 +246,7 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 
 	// Next, for each channel we'll export the total sum of our balances,
 	// as well as the number of pending HTLCs.
-	listChannelsResp, err := c.lnd.ListChannels(context.Background())
+	listChannelsResp, err := c.lnd.ListChannels(context.Background(), false, false)
 	if err != nil {
 		c.errChan <- fmt.Errorf("ChannelsCollector ListChannels "+
 			"failed with: %v", err)
@@ -557,7 +557,7 @@ func (c *ChannelsCollector) getRemotePolicies(pubkey route.Vertex) (
 		// Only record policies for peers that have this channel
 		// enabled.
 		if policy != nil && !policy.Disabled {
-			policies[i.ChannelId] = policy
+			policies[i.ChannelID] = policy
 		}
 	}
 

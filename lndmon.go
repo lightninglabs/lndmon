@@ -31,7 +31,8 @@ func start() error {
 		return err
 	}
 
-	if err := signal.Intercept(); err != nil {
+	interceptor, err := signal.Intercept()
+	if err != nil {
 		return fmt.Errorf("could not intercept signal: %v", err)
 	}
 
@@ -80,7 +81,7 @@ func start() error {
 	// our metric export.
 	var stopErr error
 	select {
-	case <-signal.ShutdownChannel():
+	case <-interceptor.ShutdownChannel():
 		fmt.Println("Exiting lndmon.")
 
 	case stopErr = <-exporter.Errors():
