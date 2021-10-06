@@ -30,6 +30,10 @@ type WalletCollector struct {
 	confirmedBalanceDesc   *prometheus.Desc
 	unconfirmedBalanceDesc *prometheus.Desc
 
+	// We'll use one counter to keep track of both internal and external key
+	// count.
+	keyCountDesc *prometheus.Desc
+
 	// errChan is a channel that we send any errors that we encounter into.
 	// This channel should be buffered so that it does not block sends.
 	errChan chan<- error
@@ -71,6 +75,16 @@ func NewWalletCollector(lnd *lndclient.LndServices,
 			"unconfirmed wallet balance",
 			nil, nil,
 		),
+		keyCountDesc: prometheus.NewDesc(
+			"lnd_wallet_key_count", "wallet key count",
+			[]string{
+				"account_name",
+				"address_type",
+				"derivation_path",
+				"key_type",
+			}, nil,
+		),
+
 		errChan: errChan,
 	}
 }
@@ -88,6 +102,7 @@ func (u *WalletCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- u.avgUtxoSizeDesc
 	ch <- u.confirmedBalanceDesc
 	ch <- u.unconfirmedBalanceDesc
+	ch <- u.keyCountDesc
 }
 
 // Collect is called by the Prometheus registry when collecting metrics.
@@ -169,4 +184,31 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 		u.unconfirmedBalanceDesc, prometheus.GaugeValue,
 		float64(walletBal.Unconfirmed),
 	)
+
+	accounts, err := u.lnd.WalletKit.ListAccounts(context.Background(), "", 0)
+	if err != nil {
+		u.errChan <- fmt.Errorf("WalletCollector ListAccounts"+
+			"failed with: %v", err)
+		return
+	}
+
+	for _, account := range accounts {
+		name := account.GetName()
+		addrType := account.GetAddressType().String()
+		path := account.GetDerivationPath()
+
+		// internal key count.
+		ch <- prometheus.MustNewConstMetric(
+			u.keyCountDesc, prometheus.CounterValue,
+			float64(account.InternalKeyCount),
+			name, addrType, path, "internal",
+		)
+
+		// external key count.
+		ch <- prometheus.MustNewConstMetric(
+			u.keyCountDesc, prometheus.CounterValue,
+			float64(account.ExternalKeyCount),
+			name, addrType, path, "external",
+		)
+	}
 }
