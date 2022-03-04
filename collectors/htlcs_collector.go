@@ -232,14 +232,19 @@ func (h *htlcMonitor) processHtlcEvent(event *routerrpc.HtlcEvent) error {
 
 	case *routerrpc.HtlcEvent_LinkFailEvent:
 		err := h.recordResolution(
-			key, event.EventType, ts, e.LinkFailEvent.FailureString,
+			key, event.EventType, ts, e.LinkFailEvent.FailureDetail.Enum().String(),
 		)
 		if err != nil {
 			return err
 		}
 
 	default:
-		return fmt.Errorf("unknown htlc event type: %T", event)
+		err := h.recordResolution(
+			key, event.EventType, ts, "unknown",
+		)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
