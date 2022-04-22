@@ -198,17 +198,21 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 		path := account.GetDerivationPath()
 
 		// internal key count.
-		ch <- prometheus.MustNewConstMetric(
-			u.keyCountDesc, prometheus.CounterValue,
-			float64(account.InternalKeyCount),
-			name, addrType, path, "internal",
-		)
+		if account.InternalKeyCount > 0 {
+			ch <- prometheus.MustNewConstMetric(
+				u.keyCountDesc, prometheus.CounterValue,
+				float64(account.InternalKeyCount),
+				name, addrType, path, "internal",
+			)
+		}
 
 		// external key count.
-		ch <- prometheus.MustNewConstMetric(
-			u.keyCountDesc, prometheus.CounterValue,
-			float64(account.ExternalKeyCount),
-			name, addrType, path, "external",
-		)
+		if account.ExternalKeyCount > 0 {
+			ch <- prometheus.MustNewConstMetric(
+				u.keyCountDesc, prometheus.CounterValue,
+				float64(account.ExternalKeyCount),
+				name, addrType, path, "external",
+			)
+		}
 	}
 }
