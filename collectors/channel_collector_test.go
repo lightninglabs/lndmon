@@ -3,7 +3,7 @@ package collectors
 import (
 	"testing"
 
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/lightninglabs/lndclient"
 	"github.com/stretchr/testify/require"
 )
