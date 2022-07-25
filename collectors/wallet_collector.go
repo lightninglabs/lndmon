@@ -164,7 +164,7 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 	)
 
 	ch <- prometheus.MustNewConstMetric(
-		u.avgUtxoSizeDesc, prometheus.GaugeValue, float64(avg),
+		u.avgUtxoSizeDesc, prometheus.GaugeValue, avg,
 	)
 
 	// Next, we'll query the wallet to determine our confirmed and unconf

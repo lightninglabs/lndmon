@@ -316,7 +316,7 @@ func (g *GraphCollector) Collect(ch chan<- prometheus.Metric) {
 
 	ch <- prometheus.MustNewConstMetric(
 		g.avgOutDegreeDesc, prometheus.GaugeValue,
-		float64(networkInfo.AvgOutDegree),
+		networkInfo.AvgOutDegree,
 	)
 	ch <- prometheus.MustNewConstMetric(
 		g.maxOutDegreeDesc, prometheus.GaugeValue,
