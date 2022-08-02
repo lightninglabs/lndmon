@@ -1,0 +1,63 @@
+run:
+  # timeout for analysis
+  deadline: 10m
+
+linters-settings:
+  govet:
+    # Don't report about shadowed variables
+    check-shadowing: false
+  gofmt:
+    # simplify code: gofmt with `-s` option, true by default
+    simplify: true
+  whitespace:
+    multi-func: true
+    multi-if: true
+
+linters:
+  enable:
+    - gofmt
+    - whitespace
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - deadcode
+    - decorder
+    - depguard
+    - dupl
+    - durationcheck
+    - errcheck
+    - errchkjson
+    - execinquery
+    - exportloopref
+    - goconst
+    - gocritic
+    - godot
+    - goheader
+    - goimports
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - grouper
+    - importas
+    - ineffassign
+    - makezero
+    - misspell
+    - nakedret
+    - nonamedreturns
+    - nosprintfhostport
+    - predeclared
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - staticcheck
+    - structcheck
+    - tagliatelle
+    - tenv
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varcheck
+    - wastedassign

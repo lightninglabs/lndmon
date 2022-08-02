@@ -25,7 +25,7 @@ var (
 // initLogRotator initializes the logging rotator to write logs to logFile and
 // create roll files in the same directory.  It must be called before the
 // package-global log rotator variables are used.
-func initLogRotator(logFile string, MaxLogFileSize int, MaxLogFiles int) error {
+func initLogRotator(logFile string, maxLogFileSize int, maxLogFiles int) error {
 	logDir, _ := filepath.Split(logFile)
 	err := os.MkdirAll(logDir, 0700)
 	if err != nil {
@@ -33,7 +33,7 @@ func initLogRotator(logFile string, MaxLogFileSize int, MaxLogFiles int) error {
 	}
 
 	r, err := rotator.New(
-		logFile, int64(MaxLogFileSize*1024), false, MaxLogFiles,
+		logFile, int64(maxLogFileSize*1024), false, maxLogFiles,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create file rotator: %v", err)

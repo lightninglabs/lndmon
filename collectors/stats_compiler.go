@@ -39,7 +39,6 @@ func newStatsCompiler(numSamples uint32) statsCompiler {
 
 // Observe logs a new value in the set of existing samples.
 func (s *statsCompiler) Observe(value float64) {
-
 	// First, we'll update our min/max, if needed.
 	if value > s.max {
 		s.max = value

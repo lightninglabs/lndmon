@@ -1,4 +1,4 @@
-FROM golang:1.14-alpine as builder
+FROM golang:1.18-alpine as builder
 
 # Install build dependencies such as git and glide.
 RUN apk add --no-cache git gcc musl-dev

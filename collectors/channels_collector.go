@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/btcsuite/btcutil"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/lightninglabs/lndclient"
 	"github.com/lightningnetwork/lnd/routing/route"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// ChannelsCollector is a collector that keeps track of channel infromation.
+// ChannelsCollector is a collector that keeps track of channel information.
 type ChannelsCollector struct {
 	channelBalanceDesc        *prometheus.Desc
 	pendingChannelBalanceDesc *prometheus.Desc
@@ -279,7 +279,7 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 		initiator := initiatorLabel(channel)
 		peer := channel.PubKeyBytes.String()
 
-		chanIdStr := strconv.Itoa(int(channel.ChannelID))
+		chanIDStr := strconv.Itoa(int(channel.ChannelID))
 
 		primaryChannel := c.primaryNode != nil &&
 			channel.PubKeyBytes == *c.primaryNode
@@ -292,57 +292,57 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 
 		ch <- prometheus.MustNewConstMetric(
 			c.incomingChanSatDesc, prometheus.GaugeValue,
-			float64(channel.RemoteBalance), chanIdStr, status,
+			float64(channel.RemoteBalance), chanIDStr, status,
 			initiator, peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.outgoingChanSatDesc, prometheus.GaugeValue,
-			float64(channel.LocalBalance), chanIdStr, status,
+			float64(channel.LocalBalance), chanIDStr, status,
 			initiator, peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.numPendingHTLCsDesc, prometheus.GaugeValue,
-			float64(channel.NumPendingHtlcs), chanIdStr, status,
+			float64(channel.NumPendingHtlcs), chanIDStr, status,
 			initiator, peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.satsSentDesc, prometheus.GaugeValue,
-			float64(channel.TotalSent), chanIdStr, status,
+			float64(channel.TotalSent), chanIDStr, status,
 			initiator, peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.satsRecvDesc, prometheus.GaugeValue,
-			float64(channel.TotalReceived), chanIdStr, status,
+			float64(channel.TotalReceived), chanIDStr, status,
 			initiator, peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.numUpdatesDesc, prometheus.GaugeValue,
-			float64(channel.NumUpdates), chanIdStr, status,
+			float64(channel.NumUpdates), chanIDStr, status,
 			initiator, peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.csvDelayDesc, prometheus.GaugeValue,
-			float64(channel.LocalConstraints.CsvDelay), chanIdStr,
+			float64(channel.LocalConstraints.CsvDelay), chanIDStr,
 			status, initiator, peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.unsettledBalanceDesc, prometheus.GaugeValue,
-			float64(channel.UnsettledBalance), chanIdStr, status,
+			float64(channel.UnsettledBalance), chanIDStr, status,
 			initiator, peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.feePerKwDesc, prometheus.GaugeValue,
-			float64(channel.FeePerKw), chanIdStr, status, initiator,
+			float64(channel.FeePerKw), chanIDStr, status, initiator,
 			peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.commitWeightDesc, prometheus.GaugeValue,
-			float64(channel.CommitWeight), chanIdStr, status,
+			float64(channel.CommitWeight), chanIDStr, status,
 			initiator, peer,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.commitFeeDesc, prometheus.GaugeValue,
-			float64(channel.CommitFee), chanIdStr, status,
+			float64(channel.CommitFee), chanIDStr, status,
 			initiator, peer,
 		)
 
@@ -351,7 +351,7 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 			ch <- prometheus.MustNewConstMetric(
 				c.channelUptimeDesc, prometheus.GaugeValue,
 				float64(channel.Uptime)/float64(channel.LifeTime),
-				chanIdStr, status, initiator, peer,
+				chanIDStr, status, initiator, peer,
 			)
 		}
 	}
