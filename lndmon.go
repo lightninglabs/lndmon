@@ -44,7 +44,8 @@ func start() error {
 			CustomMacaroonPath: filepath.Join(
 				cfg.Lnd.MacaroonDir, cfg.Lnd.MacaroonName,
 			),
-			TLSPath: cfg.Lnd.TLSPath,
+			RPCTimeout: cfg.Lnd.RPCTimeout,
+			TLSPath:    cfg.Lnd.TLSPath,
 			CheckVersion: &verrpc.Version{
 				AppMajor: 0,
 				AppMinor: 13,
