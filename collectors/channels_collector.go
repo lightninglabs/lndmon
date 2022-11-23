@@ -13,8 +13,10 @@ import (
 
 // ChannelsCollector is a collector that keeps track of channel information.
 type ChannelsCollector struct {
-	channelBalanceDesc        *prometheus.Desc
-	pendingChannelBalanceDesc *prometheus.Desc
+	channelBalanceDesc           *prometheus.Desc
+	pendingChannelBalanceDesc    *prometheus.Desc
+	pendingForceCloseBalanceDesc *prometheus.Desc
+	waitingCloseBalanceDesc      *prometheus.Desc
 
 	incomingChanSatDesc *prometheus.Desc
 	outgoingChanSatDesc *prometheus.Desc
@@ -70,7 +72,16 @@ func NewChannelsCollector(lnd lndclient.LightningClient, errChan chan<- error,
 			"total balance of all pending channels in satoshis",
 			nil, nil,
 		),
-
+		pendingForceCloseBalanceDesc: prometheus.NewDesc(
+			"lnd_channels_pending_force_close_balance_sat",
+			"force closed channel balances in satoshis",
+			append(labels, "blocks_until_maturity"), nil,
+		),
+		waitingCloseBalanceDesc: prometheus.NewDesc(
+			"lnd_channels_waiting_close_balance_sat",
+			"waiting to close channel balances in satoshis",
+			labels, nil,
+		),
 		incomingChanSatDesc: prometheus.NewDesc(
 			"lnd_channels_bandwidth_incoming_sat",
 			"total available incoming channel bandwidth within this channel",
@@ -177,6 +188,8 @@ func NewChannelsCollector(lnd lndclient.LightningClient, errChan chan<- error,
 func (c *ChannelsCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.channelBalanceDesc
 	ch <- c.pendingChannelBalanceDesc
+	ch <- c.pendingForceCloseBalanceDesc
+	ch <- c.waitingCloseBalanceDesc
 
 	ch <- c.incomingChanSatDesc
 	ch <- c.outgoingChanSatDesc
@@ -202,6 +215,22 @@ func (c *ChannelsCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.commitFeeDesc
 
 	ch <- c.inboundFee
+}
+
+func anchorStateToString(state lndclient.ForceCloseAnchorState) string {
+	switch state {
+	case lndclient.ForceCloseAnchorStateLimbo:
+		return "Limbo"
+
+	case lndclient.ForceCloseAnchorStateRecovered:
+		return "Recovered"
+
+	case lndclient.ForceCloseAnchorStateLost:
+		return "Lost"
+
+	default:
+		return "Unknown"
+	}
 }
 
 // Collect is called by the Prometheus registry when collecting metrics.
@@ -378,6 +407,33 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 		float64(len(pendingChannelsResp.WaitingClose)),
 		"waiting_close",
 	)
+
+	for _, forceClose := range pendingChannelsResp.PendingForceClose {
+		// Labels are: "chan_id", "status", "initiator", "peer",
+		// "blocks_until_maturity". We'll use status to hold the anchor
+		// state.
+		ch <- prometheus.MustNewConstMetric(
+			c.pendingForceCloseBalanceDesc, prometheus.GaugeValue,
+			float64(forceClose.RecoveredBalance),
+			forceClose.ChannelPoint.String(),
+			anchorStateToString(forceClose.AnchorState),
+			forceClose.ChannelInitiator.String(),
+			forceClose.PubKeyBytes.String(),
+			fmt.Sprintf("%d", forceClose.BlocksUntilMaturity),
+		)
+	}
+
+	for _, waitingClose := range pendingChannelsResp.WaitingClose {
+		// Labels are: "chan_id", "status", "initiator", "peer".
+		ch <- prometheus.MustNewConstMetric(
+			c.waitingCloseBalanceDesc, prometheus.GaugeValue,
+			float64(waitingClose.LocalBalance),
+			waitingClose.ChannelPoint.String(),
+			waitingClose.ChanStatusFlags,
+			waitingClose.ChannelInitiator.String(),
+			waitingClose.PubKeyBytes.String(),
+		)
+	}
 
 	// Get the list of closed channels.
 	closedChannelsResp, err := c.lnd.ClosedChannels(context.Background())
