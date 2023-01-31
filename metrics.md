@@ -1,6 +1,8 @@
 ## Chain Metrics
 * `lnd_chain_block_height`: best block height from lnd
 * `lnd_chain_block_timestamp`: best block timestamp from lnd
+* `lnd_synced_to_chain`: whether lnd is synced to chain
+* `lnd_synced_to_graph`: whether lnd is synced to graph
 
 ## Channel Metrics
 * `lnd_channels_open_balance_sat`: total balance of channels in satoshis

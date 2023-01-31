@@ -13,6 +13,7 @@ type ChainCollector struct {
 	bestBlockHeight    *prometheus.Desc
 	bestBlockTimestamp *prometheus.Desc
 	syncedToChain      *prometheus.Desc
+	syncedToGraph      *prometheus.Desc
 
 	lnd lndclient.LightningClient
 
@@ -41,6 +42,11 @@ func NewChainCollector(lnd lndclient.LightningClient,
 			"lnd is synced to the chain",
 			nil, nil,
 		),
+		syncedToGraph: prometheus.NewDesc(
+			"lnd_graph_synced",
+			"lnd is synced to the graph",
+			nil, nil,
+		),
 		lnd:     lnd,
 		errChan: errChan,
 	}
@@ -55,6 +61,7 @@ func (c *ChainCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.bestBlockHeight
 	ch <- c.bestBlockTimestamp
 	ch <- c.syncedToChain
+	ch <- c.syncedToGraph
 }
 
 // Collect is called by the Prometheus registry when collecting metrics.
@@ -81,6 +88,11 @@ func (c *ChainCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(
 		c.syncedToChain, prometheus.GaugeValue,
 		float64(boolToInt(resp.SyncedToChain)),
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		c.syncedToGraph, prometheus.GaugeValue,
+		float64(boolToInt(resp.SyncedToGraph)),
 	)
 }
 
