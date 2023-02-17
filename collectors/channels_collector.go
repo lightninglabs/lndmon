@@ -75,12 +75,12 @@ func NewChannelsCollector(lnd lndclient.LightningClient, errChan chan<- error,
 		pendingForceCloseBalanceDesc: prometheus.NewDesc(
 			"lnd_channels_pending_force_close_balance_sat",
 			"force closed channel balances in satoshis",
-			append(labels, "blocks_until_maturity"), nil,
+			[]string{"status"}, nil,
 		),
 		waitingCloseBalanceDesc: prometheus.NewDesc(
 			"lnd_channels_waiting_close_balance_sat",
 			"waiting to close channel balances in satoshis",
-			labels, nil,
+			nil, nil,
 		),
 		incomingChanSatDesc: prometheus.NewDesc(
 			"lnd_channels_bandwidth_incoming_sat",
@@ -408,32 +408,33 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 		"waiting_close",
 	)
 
+	// Preinitialize the map with all possible anchor state labels to avoid
+	// "stuck" values when selecting a longer time range.
+	forceCloseTotal := map[string]btcutil.Amount{
+		anchorStateToString(lndclient.ForceCloseAnchorStateLimbo):     0,
+		anchorStateToString(lndclient.ForceCloseAnchorStateRecovered): 0,
+		anchorStateToString(lndclient.ForceCloseAnchorStateLost):      0,
+	}
 	for _, forceClose := range pendingChannelsResp.PendingForceClose {
-		// Labels are: "chan_id", "status", "initiator", "peer",
-		// "blocks_until_maturity". We'll use status to hold the anchor
-		// state.
+		forceCloseTotal[anchorStateToString(forceClose.AnchorState)] +=
+			forceClose.RecoveredBalance
+	}
+
+	for anchorState, balance := range forceCloseTotal {
 		ch <- prometheus.MustNewConstMetric(
 			c.pendingForceCloseBalanceDesc, prometheus.GaugeValue,
-			float64(forceClose.RecoveredBalance),
-			forceClose.ChannelPoint.String(),
-			anchorStateToString(forceClose.AnchorState),
-			forceClose.ChannelInitiator.String(),
-			forceClose.PubKeyBytes.String(),
-			fmt.Sprintf("%d", forceClose.BlocksUntilMaturity),
+			float64(balance), anchorState,
 		)
 	}
 
+	var waitingClosetotal btcutil.Amount
 	for _, waitingClose := range pendingChannelsResp.WaitingClose {
-		// Labels are: "chan_id", "status", "initiator", "peer".
-		ch <- prometheus.MustNewConstMetric(
-			c.waitingCloseBalanceDesc, prometheus.GaugeValue,
-			float64(waitingClose.LocalBalance),
-			waitingClose.ChannelPoint.String(),
-			waitingClose.ChanStatusFlags,
-			waitingClose.ChannelInitiator.String(),
-			waitingClose.PubKeyBytes.String(),
-		)
+		waitingClosetotal += waitingClose.LocalBalance
 	}
+	ch <- prometheus.MustNewConstMetric(
+		c.waitingCloseBalanceDesc, prometheus.GaugeValue,
+		float64(waitingClosetotal),
+	)
 
 	// Get the list of closed channels.
 	closedChannelsResp, err := c.lnd.ClosedChannels(context.Background())
