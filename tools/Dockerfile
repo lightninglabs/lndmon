@@ -3,6 +3,7 @@ FROM golang:1.18-buster
 RUN apt-get update && apt-get install -y git
 ENV GOCACHE=/tmp/build/.cache
 ENV GOMODCACHE=/tmp/build/.modcache
+ENV GOFLAGS="-buildvcs=false"
 
 COPY . /tmp/tools
 
