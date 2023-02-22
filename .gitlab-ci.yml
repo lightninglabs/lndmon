@@ -1,0 +1,26 @@
+stages:
+  - build-staging
+  - build-production
+image: docker:stable
+
+services:
+  - docker:dind
+
+build-staging:
+  stage: build-staging
+  rules:
+    - if: $CI_COMMIT_REF_NAME == "master" &&  $CI_PIPELINE_SOURCE != "merge_request_event"
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.gitlab.com
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME -f Dockerfile .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+
+build-production:
+  stage: build-production
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.gitlab.com
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME -f Dockerfile .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+  only:
+    - tags
+
