@@ -239,16 +239,10 @@ func (h *htlcMonitor) processHtlcEvent(event *routerrpc.HtlcEvent) error {
 		}
 
 	case *routerrpc.HtlcEvent_SubscribedEvent:
-		err := h.recordResolution(key, event.EventType, ts, "")
-		if err != nil {
-			return err
-		}
+		return nil
 
 	case *routerrpc.HtlcEvent_FinalHtlcEvent:
-		err := h.recordResolution(key, event.EventType, ts, "")
-		if err != nil {
-			return err
-		}
+		return nil
 
 	default:
 		return fmt.Errorf("unknown htlc event type: %T", event)
