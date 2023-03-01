@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/lightninglabs/lndclient"
-	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/htlcswitch"
+	"github.com/lightningnetwork/lnd/invoices"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/prometheus/client_golang/prometheus"
@@ -186,13 +186,13 @@ func (h *htlcMonitor) consumeHtlcEvents() error {
 // processHtlcEvent processes all the htlc events we consume from our stream.
 func (h *htlcMonitor) processHtlcEvent(event *routerrpc.HtlcEvent) error {
 	key := htlcswitch.HtlcKey{
-		IncomingCircuit: channeldb.CircuitKey{
+		IncomingCircuit: invoices.CircuitKey{
 			ChanID: lnwire.NewShortChanIDFromInt(
 				event.IncomingChannelId,
 			),
 			HtlcID: event.IncomingHtlcId,
 		},
-		OutgoingCircuit: channeldb.CircuitKey{
+		OutgoingCircuit: invoices.CircuitKey{
 			ChanID: lnwire.NewShortChanIDFromInt(
 				event.OutgoingChannelId,
 			),
@@ -234,6 +234,18 @@ func (h *htlcMonitor) processHtlcEvent(event *routerrpc.HtlcEvent) error {
 		err := h.recordResolution(
 			key, event.EventType, ts, e.LinkFailEvent.FailureString,
 		)
+		if err != nil {
+			return err
+		}
+
+	case *routerrpc.HtlcEvent_SubscribedEvent:
+		err := h.recordResolution(key, event.EventType, ts, "")
+		if err != nil {
+			return err
+		}
+
+	case *routerrpc.HtlcEvent_FinalHtlcEvent:
+		err := h.recordResolution(key, event.EventType, ts, "")
 		if err != nil {
 			return err
 		}
