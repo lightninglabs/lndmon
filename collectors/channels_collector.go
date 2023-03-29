@@ -410,14 +410,29 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 
 	// Preinitialize the map with all possible anchor state labels to avoid
 	// "stuck" values when selecting a longer time range.
+	limboState := anchorStateToString(lndclient.ForceCloseAnchorStateLimbo)
+	recoveredState := anchorStateToString(
+		lndclient.ForceCloseAnchorStateRecovered,
+	)
+	lostState := anchorStateToString(lndclient.ForceCloseAnchorStateLost)
 	forceCloseTotal := map[string]btcutil.Amount{
-		anchorStateToString(lndclient.ForceCloseAnchorStateLimbo):     0,
-		anchorStateToString(lndclient.ForceCloseAnchorStateRecovered): 0,
-		anchorStateToString(lndclient.ForceCloseAnchorStateLost):      0,
+		limboState:     0,
+		recoveredState: 0,
+		lostState:      0,
 	}
 	for _, forceClose := range pendingChannelsResp.PendingForceClose {
-		forceCloseTotal[anchorStateToString(forceClose.AnchorState)] +=
-			forceClose.RecoveredBalance
+		// We use the anchor state names to allocate the different
+		// balances to a human-readable state. But those balances
+		// already include the anchor output value itself.
+		forceCloseTotal[limboState] += forceClose.LimboBalance
+		forceCloseTotal[recoveredState] += forceClose.RecoveredBalance
+
+		// If we actually lost the anchor output, this isn't properly
+		// reflected in the balances, so we just need to account for the
+		// list 330 satoshis.
+		if forceClose.AnchorState == lndclient.ForceCloseAnchorStateLost {
+			forceCloseTotal[lostState] += 330
+		}
 	}
 
 	for anchorState, balance := range forceCloseTotal {
