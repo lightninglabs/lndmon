@@ -59,6 +59,7 @@ func start() error {
 
 	monitoringCfg := collectors.MonitoringConfig{
 		DisableGraph: cfg.DisableGraph,
+		DisableHtlc:  cfg.DisableHtlc,
 	}
 	if cfg.PrimaryNode != "" {
 		primaryNode, err := route.NewVertexFromStr(cfg.PrimaryNode)
