@@ -67,6 +67,9 @@ type MonitoringConfig struct {
 
 	// DisableGraph disables collection of graph metrics
 	DisableGraph bool
+
+	// DisableHtlc disables collection of HTLCs metrics
+	DisableHtlc bool
 }
 
 func DefaultConfig() *PrometheusConfig {
@@ -91,18 +94,19 @@ func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
 
 	htlcMonitor := newHtlcMonitor(lnd.Router, errChan)
 
-	collectors := append(
-		[]prometheus.Collector{
-			NewChainCollector(lnd.Client, errChan),
-			NewChannelsCollector(
-				lnd.Client, errChan, monitoringCfg,
-			),
-			NewWalletCollector(lnd, errChan),
-			NewPeerCollector(lnd.Client, errChan),
-			NewInfoCollector(lnd.Client, errChan),
-		},
-		htlcMonitor.collectors()...,
-	)
+	collectors := []prometheus.Collector{
+		NewChainCollector(lnd.Client, errChan),
+		NewChannelsCollector(
+			lnd.Client, errChan, monitoringCfg,
+		),
+		NewWalletCollector(lnd, errChan),
+		NewPeerCollector(lnd.Client, errChan),
+		NewInfoCollector(lnd.Client, errChan),
+	}
+
+	if !monitoringCfg.DisableHtlc {
+		collectors = append(collectors, htlcMonitor.collectors()...)
+	}
 
 	if !monitoringCfg.DisableGraph {
 		collectors = append(collectors, NewGraphCollector(lnd.Client, errChan))
