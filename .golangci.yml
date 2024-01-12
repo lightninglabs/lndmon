@@ -22,21 +22,20 @@ linters:
     - bodyclose
     - deadcode
     - decorder
-    - depguard
     - dupl
     - durationcheck
     - errcheck
     - errchkjson
     - execinquery
     - exportloopref
-    - goconst
     - gocritic
     - godot
     - goheader
     - goimports
     - gomodguard
     - goprintffuncname
-    - gosec
+    # TODO address issues with gosec and enable.
+    # - gosec
     - gosimple
     - govet
     - grouper

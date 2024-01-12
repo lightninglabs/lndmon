@@ -183,8 +183,8 @@ func (h *htlcMonitor) consumeHtlcEvents() error {
 	return nil
 }
 
-// processHtlcEvent processes all the htlc events we consume from our stream.
-func (h *htlcMonitor) processHtlcEvent(event *routerrpc.HtlcEvent) error {
+// getKeyAndTimestamp is a helper function that extracts the key and timestamp from an event.
+func getKeyAndTimestamp(event *routerrpc.HtlcEvent) (htlcswitch.HtlcKey, time.Time) {
 	key := htlcswitch.HtlcKey{
 		IncomingCircuit: invoices.CircuitKey{
 			ChanID: lnwire.NewShortChanIDFromInt(
@@ -202,12 +202,18 @@ func (h *htlcMonitor) processHtlcEvent(event *routerrpc.HtlcEvent) error {
 
 	ts := time.Unix(0, int64(event.TimestampNs))
 
+	return key, ts
+}
+
+// processHtlcEvent processes all the htlc events we consume from our stream.
+func (h *htlcMonitor) processHtlcEvent(event *routerrpc.HtlcEvent) error {
 	switch e := event.Event.(type) {
 	// If we have received a forwarding event, we add it to our map if it
 	// is not already present. We are ok with duplicate events, because
 	// htlcs are sometimes replayed by the switch, but we want to keep our
 	// earliest timestamp for stats.
 	case *routerrpc.HtlcEvent_ForwardEvent:
+		key, ts := getKeyAndTimestamp(event)
 		if _, ok := h.activeHtlcs[key]; ok {
 			htlcLogger.Infof("htlc: %v replayed", key)
 			return nil
@@ -217,12 +223,14 @@ func (h *htlcMonitor) processHtlcEvent(event *routerrpc.HtlcEvent) error {
 		h.activeHtlcs[key] = ts
 
 	case *routerrpc.HtlcEvent_SettleEvent:
+		key, ts := getKeyAndTimestamp(event)
 		err := h.recordResolution(key, event.EventType, ts, "")
 		if err != nil {
 			return err
 		}
 
 	case *routerrpc.HtlcEvent_ForwardFailEvent:
+		key, ts := getKeyAndTimestamp(event)
 		err := h.recordResolution(
 			key, event.EventType, ts, failureReasonExternal,
 		)
@@ -231,6 +239,7 @@ func (h *htlcMonitor) processHtlcEvent(event *routerrpc.HtlcEvent) error {
 		}
 
 	case *routerrpc.HtlcEvent_LinkFailEvent:
+		key, ts := getKeyAndTimestamp(event)
 		err := h.recordResolution(
 			key, event.EventType, ts, e.LinkFailEvent.FailureString,
 		)
