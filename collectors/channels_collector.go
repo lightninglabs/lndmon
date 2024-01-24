@@ -4,12 +4,17 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/lightninglabs/lndclient"
 	"github.com/lightningnetwork/lnd/routing/route"
 	"github.com/prometheus/client_golang/prometheus"
 )
+
+// Cache refresh interval magic number.
+const cacheRefreshInterval = 10 * time.Minute
 
 // ChannelsCollector is a collector that keeps track of channel information.
 type ChannelsCollector struct {
@@ -51,17 +56,25 @@ type ChannelsCollector struct {
 	// errChan is a channel that we send any errors that we encounter into.
 	// This channel should be buffered so that it does not block sends.
 	errChan chan<- error
+
+	// quit is a channel that we use to signal for graceful shutdown.
+	quit chan struct{}
+
+	// cache is for storing results from a ticker to reduce grpc server
+	// load on lnd.
+	closedChannelsCache []lndclient.ClosedChannel
+	cacheMutex          sync.RWMutex
 }
 
 // NewChannelsCollector returns a new instance of the ChannelsCollector for the
 // target lnd client.
 func NewChannelsCollector(lnd lndclient.LightningClient, errChan chan<- error,
-	cfg *MonitoringConfig) *ChannelsCollector {
+	quitChan chan struct{}, cfg *MonitoringConfig) *ChannelsCollector {
 
 	// Our set of labels, status should either be active or inactive. The
 	// initiator is "true" if we are the initiator, and "false" otherwise.
 	labels := []string{"chan_id", "status", "initiator", "peer"}
-	return &ChannelsCollector{
+	collector := &ChannelsCollector{
 		channelBalanceDesc: prometheus.NewDesc(
 			"lnd_channels_open_balance_sat",
 			"total balance of channels in satoshis",
@@ -174,10 +187,49 @@ func NewChannelsCollector(lnd lndclient.LightningClient, errChan chan<- error,
 			[]string{"amount"}, nil,
 		),
 
-		lnd:         lnd,
-		primaryNode: cfg.PrimaryNode,
-		errChan:     errChan,
+		lnd:                 lnd,
+		primaryNode:         cfg.PrimaryNode,
+		closedChannelsCache: nil,
+		errChan:             errChan,
+		quit:                quitChan,
 	}
+
+	// Start a ticker to update the cache once per 10m
+	go func() {
+		ticker := time.NewTicker(cacheRefreshInterval)
+		defer ticker.Stop()
+
+		for {
+			err := collector.refreshClosedChannelsCache()
+			if err != nil {
+				errChan <- err
+			}
+
+			select {
+			case <-ticker.C:
+				continue
+
+			case <-collector.quit:
+				return
+			}
+		}
+	}()
+
+	return collector
+}
+
+// refreshClosedChannelsCache acquires a mutex write lock to update
+// the closedChannelsCache.
+func (c *ChannelsCollector) refreshClosedChannelsCache() error {
+	data, err := c.lnd.ClosedChannels(context.Background())
+	if err != nil {
+		return err
+	}
+	c.cacheMutex.Lock()
+	c.closedChannelsCache = data
+	c.cacheMutex.Unlock()
+
+	return nil
 }
 
 // Describe sends the super-set of all possible descriptors of metrics
@@ -452,12 +504,9 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 	)
 
 	// Get the list of closed channels.
-	closedChannelsResp, err := c.lnd.ClosedChannels(context.Background())
-	if err != nil {
-		c.errChan <- fmt.Errorf("ChannelsCollector ClosedChannels "+
-			"failed with: %v", err)
-		return
-	}
+	c.cacheMutex.RLock()
+	closedChannelsResp := c.closedChannelsCache
+	c.cacheMutex.RUnlock()
 	closeCounts := make(map[string]int)
 	for _, channel := range closedChannelsResp {
 		typeString, ok := closeTypeLabelMap[channel.CloseType]
