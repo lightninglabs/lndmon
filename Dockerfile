@@ -1,4 +1,8 @@
-FROM golang:1.18-alpine as builder
+# If you change this value, please change it in the following files as well:
+# /Dockerfile
+# /tools/Dockerfile
+# /.github/workflows/main.yml
+FROM golang:1.21.6-alpine as builder
 
 # Install build dependencies such as git and glide.
 RUN apk add --no-cache git gcc musl-dev
