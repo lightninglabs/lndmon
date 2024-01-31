@@ -84,7 +84,7 @@ func DefaultConfig() *PrometheusConfig {
 // NewPrometheusExporter makes a new instance of the PrometheusExporter given
 // the address to listen for Prometheus on and an lnd gRPC client.
 func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
-	monitoringCfg *MonitoringConfig) *PrometheusExporter {
+	monitoringCfg *MonitoringConfig, quitChan chan struct{}) *PrometheusExporter {
 
 	// We have six collectors and a htlc monitor running, so we buffer our
 	// error channel by 7 so that we do not need to consume all errors from
@@ -94,11 +94,13 @@ func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
 
 	htlcMonitor := newHtlcMonitor(lnd.Router, errChan)
 
+	chanCollector := NewChannelsCollector(
+		lnd.Client, errChan, quitChan, monitoringCfg,
+	)
+
 	collectors := []prometheus.Collector{
 		NewChainCollector(lnd.Client, errChan),
-		NewChannelsCollector(
-			lnd.Client, errChan, monitoringCfg,
-		),
+		chanCollector,
 		NewWalletCollector(lnd, errChan),
 		NewPeerCollector(lnd.Client, errChan),
 		NewInfoCollector(lnd.Client, errChan),

@@ -31,6 +31,7 @@ func start() error {
 		return err
 	}
 
+	quit := make(chan struct{})
 	interceptor, err := signal.Intercept()
 	if err != nil {
 		return fmt.Errorf("could not intercept signal: %v", err)
@@ -72,7 +73,7 @@ func start() error {
 	// Start our Prometheus exporter. This exporter spawns a goroutine
 	// that pulls metrics from our lnd client on a set interval.
 	exporter := collectors.NewPrometheusExporter(
-		cfg.Prometheus, &lnd.LndServices, &monitoringCfg,
+		cfg.Prometheus, &lnd.LndServices, &monitoringCfg, quit,
 	)
 	if err := exporter.Start(); err != nil {
 		return err
@@ -83,6 +84,7 @@ func start() error {
 	var stopErr error
 	select {
 	case <-interceptor.ShutdownChannel():
+		close(quit)
 		fmt.Println("Exiting lndmon.")
 
 	case stopErr = <-exporter.Errors():
