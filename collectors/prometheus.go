@@ -150,8 +150,10 @@ func (p *PrometheusExporter) Start() error {
 
 	// Start the htlc monitor goroutine. This will subscribe to htlcs and
 	// update all of our routing-related metrics.
-	if err := p.htlcMonitor.start(); err != nil {
-		return err
+	if !p.monitoringCfg.DisableHtlc {
+		if err := p.htlcMonitor.start(); err != nil {
+			return err
+		}
 	}
 
 	// Finally, we'll launch the HTTP server that Prometheus will use to
@@ -181,7 +183,9 @@ func (p *PrometheusExporter) Start() error {
 // before returning.
 func (p *PrometheusExporter) Stop() {
 	log.Println("Stopping Prometheus Exporter")
-	p.htlcMonitor.stop()
+	if !p.monitoringCfg.DisableHtlc {
+		p.htlcMonitor.stop()
+	}
 }
 
 // Errors returns an error channel that any failures experienced by its
