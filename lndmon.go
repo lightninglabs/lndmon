@@ -51,6 +51,7 @@ func start() error {
 				AppMajor: 0,
 				AppMinor: 13,
 			},
+			BlockUntilUnlocked: true,
 		},
 	)
 	if err != nil {

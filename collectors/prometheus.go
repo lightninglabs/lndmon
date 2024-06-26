@@ -104,6 +104,7 @@ func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
 		NewWalletCollector(lnd, errChan),
 		NewPeerCollector(lnd.Client, errChan),
 		NewInfoCollector(lnd.Client, errChan),
+		NewStateCollector(lnd, errChan),
 	}
 
 	if !monitoringCfg.DisableHtlc {
