@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	flags "github.com/jessevdk/go-flags"
 	"github.com/lightninglabs/lndclient"
@@ -36,6 +37,8 @@ func start() error {
 	if err != nil {
 		return fmt.Errorf("could not intercept signal: %v", err)
 	}
+
+	programStartTime := time.Now()
 
 	// Initialize our lnd client, requiring at least lnd v0.11.
 	lnd, err := lndclient.NewLndServices(
@@ -70,6 +73,7 @@ func start() error {
 		}
 		monitoringCfg.PrimaryNode = &primaryNode
 	}
+	monitoringCfg.ProgramStartTime = programStartTime
 
 	// Start our Prometheus exporter. This exporter spawns a goroutine
 	// that pulls metrics from our lnd client on a set interval.
