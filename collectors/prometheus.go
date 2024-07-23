@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/lightninglabs/lndclient"
@@ -70,6 +71,9 @@ type MonitoringConfig struct {
 
 	// DisableHtlc disables collection of HTLCs metrics
 	DisableHtlc bool
+
+	// ProgramStartTime stores a best-effort estimate of when lnd/lndmon was started.
+	ProgramStartTime time.Time
 }
 
 func DefaultConfig() *PrometheusConfig {
@@ -104,6 +108,7 @@ func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
 		NewWalletCollector(lnd, errChan),
 		NewPeerCollector(lnd.Client, errChan),
 		NewInfoCollector(lnd.Client, errChan),
+		NewStateCollector(lnd, errChan, monitoringCfg.ProgramStartTime),
 	}
 
 	if !monitoringCfg.DisableHtlc {
