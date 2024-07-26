@@ -70,8 +70,20 @@ func (c *ChainCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *ChainCollector) Collect(ch chan<- prometheus.Metric) {
 	resp, err := c.lnd.GetInfo(context.Background())
 	if err != nil {
-		c.errChan <- fmt.Errorf("ChainCollector GetInfo failed with: "+
-			"%v", err)
+		errWithContext := fmt.Errorf("ChainCollector GetInfo "+
+			"failed with: %w", err)
+		Logger.Error(errWithContext)
+
+		// If this isn't just a timeout, we'll want to exit to give the
+		// runtime (Docker/k8s/systemd) a chance to restart us, in case
+		// something with the lnd connection and/or credentials has
+		// changed. We just do this check for the GetInfo call, since
+		// that's known to sometimes randomly take way longer than on
+		// average (database interactions?).
+		if !IsDeadlineExceeded(err) {
+			c.errChan <- errWithContext
+		}
+
 		return
 	}
 
