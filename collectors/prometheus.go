@@ -72,7 +72,8 @@ type MonitoringConfig struct {
 	// DisableHtlc disables collection of HTLCs metrics
 	DisableHtlc bool
 
-	// ProgramStartTime stores a best-effort estimate of when lnd/lndmon was started.
+	// ProgramStartTime stores a best-effort estimate of when lnd/lndmon was
+	// started.
 	ProgramStartTime time.Time
 }
 
@@ -88,13 +89,14 @@ func DefaultConfig() *PrometheusConfig {
 // NewPrometheusExporter makes a new instance of the PrometheusExporter given
 // the address to listen for Prometheus on and an lnd gRPC client.
 func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
-	monitoringCfg *MonitoringConfig, quitChan chan struct{}) *PrometheusExporter {
+	monitoringCfg *MonitoringConfig,
+	quitChan chan struct{}) *PrometheusExporter {
 
 	// We have six collectors and a htlc monitor running, so we buffer our
-	// error channel by 7 so that we do not need to consume all errors from
+	// error channel by 8 so that we do not need to consume all errors from
 	// this channel (on the first one, we'll start shutting down, but a few
 	// could arrive quickly in the case where lnd is shutting down).
-	errChan := make(chan error, 7)
+	errChan := make(chan error, 8)
 
 	htlcMonitor := newHtlcMonitor(lnd.Router, errChan)
 
@@ -116,7 +118,9 @@ func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
 	}
 
 	if !monitoringCfg.DisableGraph {
-		collectors = append(collectors, NewGraphCollector(lnd.Client, errChan))
+		collectors = append(
+			collectors, NewGraphCollector(lnd.Client, errChan),
+		)
 	}
 
 	return &PrometheusExporter{
@@ -165,15 +169,19 @@ func (p *PrometheusExporter) Start() error {
 	// scape our metrics.
 	go func() {
 		errorLogger := log.New(
-			os.Stdout, "promhttp", log.Ldate|log.Ltime|log.Lshortfile,
+			os.Stdout, "promhttp",
+			log.Ldate|log.Ltime|log.Lshortfile,
 		)
 
 		promHandler := promhttp.InstrumentMetricHandler(
 			prometheus.DefaultRegisterer,
-			promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
-				ErrorLog:      errorLogger,
-				ErrorHandling: promhttp.ContinueOnError,
-			}),
+			promhttp.HandlerFor(
+				prometheus.DefaultGatherer,
+				promhttp.HandlerOpts{
+					ErrorLog:      errorLogger,
+					ErrorHandling: promhttp.ContinueOnError,
+				},
+			),
 		)
 		http.Handle("/metrics", promHandler)
 		Logger.Info(http.ListenAndServe(p.cfg.ListenAddr, nil))
