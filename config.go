@@ -23,7 +23,7 @@ type lndConfig struct {
 	Host string `long:"host" description:"lnd instance rpc address"`
 
 	// Network is the network that lnd is running on, i.e. mainnet.
-	Network string `long:"network" description:"network to run on" choice:"regtest" choice:"testnet" choice:"mainnet" choice:"simnet"`
+	Network string `long:"network" description:"network to run on" choice:"regtest" choice:"testnet" choice:"mainnet" choice:"simnet" choice:"signet"`
 
 	// MacaroonDir is the path to lnd macaroons.
 	MacaroonDir string `long:"macaroondir" description:"Path to lnd macaroons"`
