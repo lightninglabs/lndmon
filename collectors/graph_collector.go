@@ -3,9 +3,30 @@ package collectors
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/lightninglabs/lndclient"
 	"github.com/prometheus/client_golang/prometheus"
+)
+
+const (
+	// inboundFeeFeatureBits is the feature id used to advertise inbound
+	// fees in gossip TLV extensions.
+	inboundFeeFeatureBits = 55555
+
+	// Define some collector names and help texts for inbound fees.
+	inboundFeeRateName = "lnd_graph_inbound_fee_rate_msat_histogram"
+	inboundFeeBaseName = "lnd_graph_inbound_fee_base_msat_histogram"
+	inboundFeeRateHelp = "histogram of inbound fee rates for channel " +
+		"routing policies in msat"
+	inboundFeeBaseHelp = "histogram of inbound base fees for channel " +
+		"routing policies in msat"
+
+	// Define labels to categorize inbound fees into negative and positive
+	// buckets.
+	inboundFeeSignLabel         = "sign"
+	inboundFeeSignLabelPositive = "positive"
+	inboundFeeSignLabelNegative = "negative"
 )
 
 // GraphCollector is a collector that keeps track of graph information.
@@ -45,6 +66,9 @@ type GraphCollector struct {
 	maxFeeRateMsatDesc    *prometheus.Desc
 	minFeeRateMsatDesc    *prometheus.Desc
 	avgFeeRateMsatDesc    *prometheus.Desc
+
+	inboundFeeBaseMsatDesc *prometheus.Desc
+	inboundFeeRateMsatDesc *prometheus.Desc
 
 	medianMaxHtlcMsatDesc *prometheus.Desc
 	maxMaxHtlcMsatDesc    *prometheus.Desc
@@ -207,6 +231,15 @@ func NewGraphCollector(lnd lndclient.LightningClient,
 			nil, nil,
 		),
 
+		inboundFeeBaseMsatDesc: prometheus.NewDesc(
+			inboundFeeBaseName, inboundFeeBaseHelp,
+			[]string{inboundFeeSignLabel}, nil,
+		),
+		inboundFeeRateMsatDesc: prometheus.NewDesc(
+			inboundFeeRateName, inboundFeeRateHelp,
+			[]string{inboundFeeSignLabel}, nil,
+		),
+
 		medianMaxHtlcMsatDesc: prometheus.NewDesc(
 			"lnd_graph_max_htlc_msat_median",
 			"median max htlc for a channel routing policy in msat",
@@ -273,6 +306,9 @@ func (g *GraphCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- g.maxFeeRateMsatDesc
 	ch <- g.avgFeeRateMsatDesc
 	ch <- g.medianFeeRateMsatDesc
+
+	ch <- g.inboundFeeBaseMsatDesc
+	ch <- g.inboundFeeRateMsatDesc
 
 	ch <- g.minMaxHtlcMsatDesc
 	ch <- g.maxMaxHtlcMsatDesc
@@ -366,6 +402,27 @@ func (g *GraphCollector) collectRoutingPolicyMetrics(
 
 		feeBaseStats = newStatsCompiler(numEdges)
 		feeRateStats = newStatsCompiler(numEdges)
+
+		inboundFeeBaseStats = prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Name: inboundFeeBaseName,
+				Help: inboundFeeBaseHelp,
+				Buckets: prometheus.ExponentialBuckets(
+					1, 2, 20, // 1 to 1_048_576 msat
+				),
+			},
+			[]string{inboundFeeSignLabel},
+		)
+		inboundFeeRateStats = prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Name: inboundFeeRateName,
+				Help: inboundFeeRateHelp,
+				Buckets: prometheus.ExponentialBuckets(
+					1, 2, 15, // 1 to 32768 PPM ~ 3 %
+				),
+			},
+			[]string{inboundFeeSignLabel},
+		)
 	)
 
 	for _, edge := range edges {
@@ -385,6 +442,36 @@ func (g *GraphCollector) collectRoutingPolicyMetrics(
 
 			feeBaseStats.Observe(float64(policy.FeeBaseMsat))
 			feeRateStats.Observe(float64(policy.FeeRateMilliMsat))
+
+			// Collect optional non-zero inbound fee statistics.
+			_, ok := policy.CustomRecords[inboundFeeFeatureBits]
+			if ok {
+				absBase := math.Abs(float64(
+					policy.InboundBaseFeeMsat,
+				))
+				if policy.InboundBaseFeeMsat < 0 {
+					inboundFeeBaseStats.WithLabelValues(
+						inboundFeeSignLabelNegative,
+					).Observe(absBase)
+				} else if policy.InboundBaseFeeMsat > 0 {
+					inboundFeeBaseStats.WithLabelValues(
+						inboundFeeSignLabelPositive,
+					).Observe(absBase)
+				}
+
+				absRate := math.Abs(
+					float64(policy.InboundFeeRatePPM),
+				)
+				if policy.InboundFeeRatePPM < 0 {
+					inboundFeeRateStats.WithLabelValues(
+						inboundFeeSignLabelNegative,
+					).Observe(absRate)
+				} else if policy.InboundFeeRatePPM > 0 {
+					inboundFeeRateStats.WithLabelValues(
+						inboundFeeSignLabelPositive,
+					).Observe(absRate)
+				}
+			}
 		}
 	}
 
@@ -478,4 +565,7 @@ func (g *GraphCollector) collectRoutingPolicyMetrics(
 		g.medianFeeRateMsatDesc, prometheus.GaugeValue,
 		feeRateReport.median,
 	)
+
+	inboundFeeBaseStats.Collect(ch)
+	inboundFeeRateStats.Collect(ch)
 }
