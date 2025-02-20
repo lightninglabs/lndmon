@@ -63,8 +63,9 @@ func start() error {
 	defer lnd.Close()
 
 	monitoringCfg := collectors.MonitoringConfig{
-		DisableGraph: cfg.DisableGraph,
-		DisableHtlc:  cfg.DisableHtlc,
+		DisableGraph:    cfg.DisableGraph,
+		DisableHtlc:     cfg.DisableHtlc,
+		DisablePayments: cfg.DisablePayments,
 	}
 	if cfg.PrimaryNode != "" {
 		primaryNode, err := route.NewVertexFromStr(cfg.PrimaryNode)

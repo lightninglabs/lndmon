@@ -20,6 +20,9 @@ var (
 
 	// htlcLogger is a logger for lndmon's htlc collector.
 	htlcLogger = build.NewSubLogger("HTLC", backendLog.Logger)
+
+	// paymentLogger is a logger for lndmon's payments monitor.
+	paymentLogger = build.NewSubLogger("PMNT", backendLog.Logger)
 )
 
 // initLogRotator initializes the logging rotator to write logs to logFile and

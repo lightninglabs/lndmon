@@ -54,6 +54,9 @@ type config struct {
 
 	// DisableHtlc disables the collection of HTLCs metrics.
 	DisableHtlc bool `long:"disablehtlc" description:"Do not collect HTLCs metrics"`
+
+	// DisablePayments disables the collection of payments metrics.
+	DisablePayments bool `long:"disablepayments" description:"Do not collect payments metrics"`
 }
 
 var defaultConfig = config{

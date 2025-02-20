@@ -32,7 +32,8 @@ type PrometheusExporter struct {
 
 	monitoringCfg *MonitoringConfig
 
-	htlcMonitor *htlcMonitor
+	htlcMonitor     *htlcMonitor
+	paymentsMonitor *paymentsMonitor
 
 	// collectors is the exporter's active set of collectors.
 	collectors []prometheus.Collector
@@ -72,6 +73,9 @@ type MonitoringConfig struct {
 	// DisableHtlc disables collection of HTLCs metrics
 	DisableHtlc bool
 
+	// DisablePayments disables collection of payment metrics
+	DisablePayments bool
+
 	// ProgramStartTime stores a best-effort estimate of when lnd/lndmon was
 	// started.
 	ProgramStartTime time.Time
@@ -100,6 +104,9 @@ func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
 
 	htlcMonitor := newHtlcMonitor(lnd.Router, errChan)
 
+	// Create payments monitor.
+	paymentsMonitor := newPaymentsMonitor(lnd, errChan)
+
 	chanCollector := NewChannelsCollector(
 		lnd.Client, errChan, quitChan, monitoringCfg,
 	)
@@ -117,6 +124,12 @@ func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
 		collectors = append(collectors, htlcMonitor.collectors()...)
 	}
 
+	if !monitoringCfg.DisablePayments {
+		collectors = append(
+			collectors, paymentsMonitor.collectors()...,
+		)
+	}
+
 	if !monitoringCfg.DisableGraph {
 		collectors = append(
 			collectors, NewGraphCollector(lnd.Client, errChan),
@@ -124,12 +137,13 @@ func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
 	}
 
 	return &PrometheusExporter{
-		cfg:           cfg,
-		lnd:           lnd,
-		monitoringCfg: monitoringCfg,
-		collectors:    collectors,
-		htlcMonitor:   htlcMonitor,
-		errChan:       errChan,
+		cfg:             cfg,
+		lnd:             lnd,
+		monitoringCfg:   monitoringCfg,
+		collectors:      collectors,
+		htlcMonitor:     htlcMonitor,
+		paymentsMonitor: paymentsMonitor,
+		errChan:         errChan,
 	}
 }
 
@@ -161,6 +175,15 @@ func (p *PrometheusExporter) Start() error {
 	// update all of our routing-related metrics.
 	if !p.monitoringCfg.DisableHtlc {
 		if err := p.htlcMonitor.start(); err != nil {
+			return err
+		}
+	}
+
+	// Start the payment monitor goroutine. This will subscribe to receive
+	// update for all payments made by lnd and update our payments related
+	// metrics.
+	if !p.monitoringCfg.DisablePayments {
+		if err := p.paymentsMonitor.start(); err != nil {
 			return err
 		}
 	}
@@ -198,6 +221,10 @@ func (p *PrometheusExporter) Stop() {
 	log.Println("Stopping Prometheus Exporter")
 	if !p.monitoringCfg.DisableHtlc {
 		p.htlcMonitor.stop()
+	}
+
+	if !p.monitoringCfg.DisablePayments {
+		p.paymentsMonitor.stop()
 	}
 }
 
