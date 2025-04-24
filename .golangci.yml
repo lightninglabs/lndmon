@@ -1,6 +1,8 @@
 run:
   # timeout for analysis
-  deadline: 10m
+  timeout: 10m
+
+  go: "1.23"
 
 linters-settings:
   govet:
@@ -20,13 +22,11 @@ linters:
     - asciicheck
     - bidichk
     - bodyclose
-    - deadcode
     - decorder
     - dupl
     - durationcheck
     - errcheck
     - errchkjson
-    - execinquery
     - exportloopref
     - gocritic
     - godot
@@ -51,12 +51,10 @@ linters:
     - rowserrcheck
     - sqlclosecheck
     - staticcheck
-    - structcheck
     - tagliatelle
     - tenv
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
     - wastedassign
