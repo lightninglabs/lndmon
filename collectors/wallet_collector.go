@@ -121,8 +121,8 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	var (
-		numConf, numUnconf uint32
-		sum, max, min      btcutil.Amount
+		numConf, numUnconf  uint32
+		sum, maxAmt, minAmt btcutil.Amount
 	)
 
 	// For each UTXO, we'll count the tally of confirmed vs unconfirmed,
@@ -137,11 +137,11 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 			numConf++
 		}
 
-		if utxo.Value > max {
-			max = utxo.Value
+		if utxo.Value > maxAmt {
+			maxAmt = utxo.Value
 		}
-		if utxo.Value < min || min == 0 {
-			min = utxo.Value
+		if utxo.Value < minAmt || minAmt == 0 {
+			minAmt = utxo.Value
 		}
 	}
 
@@ -156,11 +156,11 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 	)
 
 	ch <- prometheus.MustNewConstMetric(
-		u.minUtxoSizeDesc, prometheus.GaugeValue, float64(min),
+		u.minUtxoSizeDesc, prometheus.GaugeValue, float64(minAmt),
 	)
 
 	ch <- prometheus.MustNewConstMetric(
-		u.maxUtxoSizeDesc, prometheus.GaugeValue, float64(max),
+		u.maxUtxoSizeDesc, prometheus.GaugeValue, float64(maxAmt),
 	)
 
 	ch <- prometheus.MustNewConstMetric(

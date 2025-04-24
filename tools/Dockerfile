@@ -2,7 +2,7 @@
 # /Dockerfile
 # /tools/Dockerfile
 # /.github/workflows/main.yml
-FROM golang:1.21.6-bookworm
+FROM golang:1.23.6-bookworm
 
 RUN apt-get update && apt-get install -y git
 ENV GOCACHE=/tmp/build/.cache

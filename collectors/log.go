@@ -2,53 +2,60 @@ package collectors
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
-	"github.com/btcsuite/btclog"
-	"github.com/jrick/logrotate/rotator"
+	"github.com/btcsuite/btclog/v2"
 	"github.com/lightningnetwork/lnd/build"
 )
 
 var (
-	logWriter  = &build.LogWriter{}
-	backendLog = btclog.NewBackend(logWriter)
-
 	// Logger for lndmon's main process.
-	Logger = backendLog.Logger("LNDMON")
+	Logger btclog.Logger
 
 	// htlcLogger is a logger for lndmon's htlc collector.
-	htlcLogger = build.NewSubLogger("HTLC", backendLog.Logger)
+	htlcLogger btclog.Logger
 
 	// paymentLogger is a logger for lndmon's payments monitor.
-	paymentLogger = build.NewSubLogger("PMNT", backendLog.Logger)
+	paymentLogger btclog.Logger
+
+	noOpShutdownFunc = func() {}
 )
 
 // initLogRotator initializes the logging rotator to write logs to logFile and
 // create roll files in the same directory.  It must be called before the
 // package-global log rotator variables are used.
-func initLogRotator(logFile string, maxLogFileSize int, maxLogFiles int) error {
+func initLogRotator(logFile string, maxLogFileSize, maxLogFiles int) error {
 	logDir, _ := filepath.Split(logFile)
-	err := os.MkdirAll(logDir, 0700)
-	if err != nil {
+	if err := os.MkdirAll(logDir, 0700); err != nil {
 		return fmt.Errorf("failed to create log directory: %v", err)
 	}
 
-	r, err := rotator.New(
-		logFile, int64(maxLogFileSize*1024), false, maxLogFiles,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create file rotator: %v", err)
+	// Setup the rotating log writer.
+	logRotator := build.NewRotatingLogWriter()
+	logCfg := build.DefaultLogConfig()
+	logCfg.File.MaxLogFileSize = maxLogFileSize
+	logCfg.File.MaxLogFiles = maxLogFiles
+	logCfg.File.Compressor = build.Gzip // Optional: or build.Zstd
+
+	if err := logRotator.InitLogRotator(logCfg.File, logFile); err != nil {
+		return fmt.Errorf("failed to init log rotator: %w", err)
 	}
 
-	pr, pw := io.Pipe()
-	go func() {
-		err := r.Run(pr)
-		fmt.Println("unable to set up logs: ", err)
-	}()
+	// Create the log handlers (console + rotating file).
+	logHandlers := build.NewDefaultLogHandlers(logCfg, logRotator)
 
-	logWriter.RotatorPipe = pw
+	// Create the subsystem logger manager.
+	logManager := build.NewSubLoggerManager(logHandlers...)
+
+	// Create subsystem loggers.
+	Logger = logManager.GenSubLogger("LNDMON", noOpShutdownFunc)
+	htlcLogger = logManager.GenSubLogger("HTLC", noOpShutdownFunc)
+	paymentLogger = logManager.GenSubLogger("PMNT", noOpShutdownFunc)
+
+	// Set log level.
+	// TODO: consider making this configurable.
+	logManager.SetLogLevels("info")
 
 	return nil
 }
