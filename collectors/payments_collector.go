@@ -23,13 +23,15 @@ var (
 		[]string{"status"},
 	)
 
-	// totalHTLCAttempts is a simple counter which, in combination with the
-	// payment counter, permits tracking the number of attempts per payment.
-	totalHTLCAttempts = prometheus.NewCounter(
+	// totalHTLCAttempts tracks the number of HTLC attempts made based on
+	// the payment status (success or fail). When combined with the payment
+	// counter, this permits tracking the number of attempts per payment.
+	totalHTLCAttempts = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "lnd_total_htlc_attempts",
-			Help: "Total number of HTLC attempts across all payments",
+			Help: "Total number of HTLC attempts across all payments, labeled by final payment status",
 		},
+		[]string{"status"},
 	)
 
 	// paymentAttempts is a histogram for visualizing what portion of
@@ -164,12 +166,13 @@ func processPaymentUpdate(payment *lnrpc.Payment) {
 		status = "unknown"
 	}
 
+	// Increment metrics with proper label.
 	totalPayments.WithLabelValues(status).Inc()
+
 	attemptCount := len(payment.Htlcs)
+	totalHTLCAttempts.WithLabelValues(status).Add(float64(attemptCount))
 
-	totalHTLCAttempts.Add(float64(attemptCount))
 	paymentAttempts.Observe(float64(attemptCount))
-
 	paymentLogger.Debugf("Payment %s updated: status=%s, %d attempts",
 		payment.PaymentHash, status, attemptCount)
 }
