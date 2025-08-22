@@ -189,7 +189,7 @@ func (p *PrometheusExporter) Start() error {
 	}
 
 	// Finally, we'll launch the HTTP server that Prometheus will use to
-	// scape our metrics.
+	// scrape our metrics.
 	go func() {
 		errorLogger := log.New(
 			os.Stdout, "promhttp",
