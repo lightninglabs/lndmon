@@ -118,6 +118,7 @@ func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
 		NewPeerCollector(lnd.Client, errChan),
 		NewInfoCollector(lnd.Client, errChan),
 		NewStateCollector(lnd, errChan, monitoringCfg.ProgramStartTime),
+		NewWtClientCollector(lnd, errChan),
 	}
 
 	if !monitoringCfg.DisableHtlc {
@@ -189,7 +190,7 @@ func (p *PrometheusExporter) Start() error {
 	}
 
 	// Finally, we'll launch the HTTP server that Prometheus will use to
-	// scape our metrics.
+	// scrape our metrics.
 	go func() {
 		errorLogger := log.New(
 			os.Stdout, "promhttp",

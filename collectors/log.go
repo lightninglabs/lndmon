@@ -19,6 +19,9 @@ var (
 	// paymentLogger is a logger for lndmon's payments monitor.
 	paymentLogger btclog.Logger
 
+	// watchtowerLogger is a logger for lndmon's watchtower client.
+	watchtowerLogger btclog.Logger
+
 	noOpShutdownFunc = func() {}
 )
 
@@ -52,6 +55,7 @@ func initLogRotator(logFile string, maxLogFileSize, maxLogFiles int) error {
 	Logger = logManager.GenSubLogger("LNDMON", noOpShutdownFunc)
 	htlcLogger = logManager.GenSubLogger("HTLC", noOpShutdownFunc)
 	paymentLogger = logManager.GenSubLogger("PMNT", noOpShutdownFunc)
+	watchtowerLogger = logManager.GenSubLogger("WTCL", noOpShutdownFunc)
 
 	// Set log level.
 	// TODO: consider making this configurable.
