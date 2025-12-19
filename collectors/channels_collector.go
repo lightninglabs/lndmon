@@ -45,6 +45,16 @@ type ChannelsCollector struct {
 	commitWeightDesc     *prometheus.Desc
 	commitFeeDesc        *prometheus.Desc
 
+	localBaseFeeDesc        *prometheus.Desc
+	localFeeRateDesc        *prometheus.Desc
+	localInboundBaseFeeDesc *prometheus.Desc
+	localInboundFeeRateDesc *prometheus.Desc
+
+	remoteBaseFeeDesc        *prometheus.Desc
+	remoteFeeRateDesc        *prometheus.Desc
+	remoteInboundBaseFeeDesc *prometheus.Desc
+	remoteInboundFeeRateDesc *prometheus.Desc
+
 	// inboundFee is a metric that reflects the fee paid by senders on the
 	// last hop towards this node.
 	inboundFee *prometheus.Desc
@@ -187,6 +197,47 @@ func NewChannelsCollector(lnd lndclient.LightningClient, errChan chan<- error,
 			[]string{"amount"}, nil,
 		),
 
+		localBaseFeeDesc: prometheus.NewDesc(
+			"lnd_channels_local_base_fee_msat",
+			"local base fee in millisatoshis for this channel",
+			labels, nil,
+		),
+		localFeeRateDesc: prometheus.NewDesc(
+			"lnd_channels_local_fee_rate",
+			"local fee rate in millionths for this channel",
+			labels, nil,
+		),
+		localInboundBaseFeeDesc: prometheus.NewDesc(
+			"lnd_channels_local_inbound_base_fee_msat",
+			"local inbound base fee in millisatoshis for this channel",
+			labels, nil,
+		),
+		localInboundFeeRateDesc: prometheus.NewDesc(
+			"lnd_channels_local_inbound_fee_rate",
+			"local inbound fee rate in millionths for this channel",
+			labels, nil,
+		),
+		remoteBaseFeeDesc: prometheus.NewDesc(
+			"lnd_channels_remote_base_fee_msat",
+			"remote base fee in millisatoshis for this channel",
+			labels, nil,
+		),
+		remoteFeeRateDesc: prometheus.NewDesc(
+			"lnd_channels_remote_fee_rate",
+			"remote fee rate in millionths for this channel",
+			labels, nil,
+		),
+		remoteInboundBaseFeeDesc: prometheus.NewDesc(
+			"lnd_channels_remote_inbound_base_fee_msat",
+			"remote inbound base fee in millisatoshis for this channel",
+			labels, nil,
+		),
+		remoteInboundFeeRateDesc: prometheus.NewDesc(
+			"lnd_channels_remote_inbound_fee_rate",
+			"remote inbound fee rate in millionths for this channel",
+			labels, nil,
+		),
+
 		lnd:                 lnd,
 		primaryNode:         cfg.PrimaryNode,
 		closedChannelsCache: nil,
@@ -267,6 +318,16 @@ func (c *ChannelsCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.commitFeeDesc
 
 	ch <- c.inboundFee
+
+	ch <- c.localBaseFeeDesc
+	ch <- c.localFeeRateDesc
+	ch <- c.localInboundBaseFeeDesc
+	ch <- c.localInboundFeeRateDesc
+
+	ch <- c.remoteBaseFeeDesc
+	ch <- c.remoteFeeRateDesc
+	ch <- c.remoteInboundBaseFeeDesc
+	ch <- c.remoteInboundFeeRateDesc
 }
 
 func anchorStateToString(state lndclient.ForceCloseAnchorState) string {
@@ -344,6 +405,17 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 		c.errChan <- fmt.Errorf("ChannelsCollector ListChannels "+
 			"failed with: %v", err)
 		return
+	}
+
+	nodeInfo, err := c.lnd.GetNodeInfo(context.Background(), getInfoResp.IdentityPubkey, true)
+	if err != nil {
+		c.errChan <- fmt.Errorf("ChannelsCollector GetNodeInfo "+
+			"failed with: %v", err)
+		return
+	}
+	channelInfoMap := make(map[uint64]lndclient.ChannelEdge)
+	for _, c := range nodeInfo.Channels {
+		channelInfoMap[c.ChannelID] = c
 	}
 
 	// statusLabel is a small helper function returns the proper status
@@ -438,6 +510,52 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 			float64(channel.CommitFee), chanIDStr, status,
 			initiator, peer,
 		)
+
+		if chanInfo, ok := channelInfoMap[channel.ChannelID]; ok {
+			localPolicy := chanInfo.Node1Policy
+			ch <- prometheus.MustNewConstMetric(
+				c.localBaseFeeDesc, prometheus.GaugeValue,
+				float64(localPolicy.FeeBaseMsat),
+				chanIDStr, status, initiator, peer,
+			)
+			ch <- prometheus.MustNewConstMetric(
+				c.localFeeRateDesc, prometheus.GaugeValue,
+				float64(localPolicy.FeeRateMilliMsat),
+				chanIDStr, status, initiator, peer,
+			)
+			ch <- prometheus.MustNewConstMetric(
+				c.localInboundBaseFeeDesc, prometheus.GaugeValue,
+				float64(localPolicy.InboundBaseFeeMsat),
+				chanIDStr, status, initiator, peer,
+			)
+			ch <- prometheus.MustNewConstMetric(
+				c.localInboundFeeRateDesc, prometheus.GaugeValue,
+				float64(localPolicy.InboundFeeRatePPM),
+				chanIDStr, status, initiator, peer,
+			)
+
+			remotePolicy := chanInfo.Node2Policy
+			ch <- prometheus.MustNewConstMetric(
+				c.remoteBaseFeeDesc, prometheus.GaugeValue,
+				float64(remotePolicy.FeeBaseMsat),
+				chanIDStr, status, initiator, peer,
+			)
+			ch <- prometheus.MustNewConstMetric(
+				c.remoteFeeRateDesc, prometheus.GaugeValue,
+				float64(remotePolicy.FeeRateMilliMsat),
+				chanIDStr, status, initiator, peer,
+			)
+			ch <- prometheus.MustNewConstMetric(
+				c.remoteInboundBaseFeeDesc, prometheus.GaugeValue,
+				float64(remotePolicy.InboundBaseFeeMsat),
+				chanIDStr, status, initiator, peer,
+			)
+			ch <- prometheus.MustNewConstMetric(
+				c.remoteInboundFeeRateDesc, prometheus.GaugeValue,
+				float64(remotePolicy.InboundFeeRatePPM),
+				chanIDStr, status, initiator, peer,
+			)
+		}
 
 		// Only record uptime if the channel has been monitored.
 		if channel.LifeTime != 0 {
@@ -537,7 +655,7 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	// Get all remote policies
-	remotePolicies, err := c.getRemotePolicies(getInfoResp.IdentityPubkey)
+	remotePolicies, err := c.getRemotePolicies(getInfoResp.IdentityPubkey, nodeInfo)
 	if err != nil {
 		c.errChan <- fmt.Errorf("ChannelsCollector getRemotePolicies "+
 			"failed with: %v", err)
@@ -663,18 +781,11 @@ func approximateInboundFee(amt btcutil.Amount, remotePolicies map[uint64]*lndcli
 
 // getRemotePolicies gets all the remote policies for enabled channels of this
 // node's peers.
-func (c *ChannelsCollector) getRemotePolicies(pubkey route.Vertex) (
+func (c *ChannelsCollector) getRemotePolicies(pubkey route.Vertex, nodeInfo *lndclient.NodeInfo) (
 	map[uint64]*lndclient.RoutingPolicy, error) {
 
-	nodeInfoResp, err := c.lnd.GetNodeInfo(
-		context.Background(), pubkey, true,
-	)
-	if err != nil {
-		return nil, err
-	}
-
 	policies := make(map[uint64]*lndclient.RoutingPolicy)
-	for _, i := range nodeInfoResp.Channels {
+	for _, i := range nodeInfo.Channels {
 		var policy *lndclient.RoutingPolicy
 		switch {
 		case i.Node1 == pubkey:
