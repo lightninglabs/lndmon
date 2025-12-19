@@ -17,6 +17,7 @@ type WtClientCollector struct {
 
 	numBackupsDesc        *prometheus.Desc
 	numPendingBackupsDesc *prometheus.Desc
+	numSessionsDesc       *prometheus.Desc
 
 	// errChan is a channel that we send any errors that we encounter into.
 	// This channel should be buffered so that it does not block sending.
@@ -39,6 +40,13 @@ func NewWtClientCollector(lnd *lndclient.LndServices,
 		numPendingBackupsDesc: prometheus.NewDesc(
 			"lnd_wt_client_num_pending_backups",
 			"watchtower client number of pending backups",
+			[]string{
+				"tower_pubkey",
+			}, nil,
+		),
+		numSessionsDesc: prometheus.NewDesc(
+			"lnd_wt_client_num_sessions",
+			"watchtower client number of sessions",
 			[]string{
 				"tower_pubkey",
 			}, nil,
@@ -89,6 +97,7 @@ func (c *WtClientCollector) Collect(ch chan<- prometheus.Metric) {
 			numBackups        uint32
 			numPendingBackups uint32
 		)
+
 		for _, sessionInfo := range tower.SessionInfo {
 			for _, session := range sessionInfo.Sessions {
 				numBackups += session.NumBackups
@@ -103,6 +112,10 @@ func (c *WtClientCollector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(
 			c.numPendingBackupsDesc, prometheus.GaugeValue,
 			float64(numPendingBackups), pubkey,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			c.numSessionsDesc, prometheus.GaugeValue,
+			float64(tower.NumSessions), pubkey,
 		)
 	}
 }
