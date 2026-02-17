@@ -62,8 +62,6 @@ func TestGetInboundFee(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		test := test
-
 		t.Run(test.name, func(t *testing.T) {
 			testGetInboundFee(
 				t, test.amt, test.expectedFee,

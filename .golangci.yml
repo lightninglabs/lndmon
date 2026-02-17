@@ -5,9 +5,6 @@ run:
   go: "1.23"
 
 linters-settings:
-  govet:
-    # Don't report about shadowed variables
-    check-shadowing: false
   gofmt:
     # simplify code: gofmt with `-s` option, true by default
     simplify: true
@@ -22,12 +19,12 @@ linters:
     - asciicheck
     - bidichk
     - bodyclose
+    - copyloopvar
     - decorder
     - dupl
     - durationcheck
     - errcheck
     - errchkjson
-    - exportloopref
     - gocritic
     - godot
     - goheader
@@ -52,9 +49,9 @@ linters:
     - sqlclosecheck
     - staticcheck
     - tagliatelle
-    - tenv
     - typecheck
     - unconvert
     - unparam
     - unused
+    - usetesting
     - wastedassign
