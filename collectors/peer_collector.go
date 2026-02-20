@@ -89,8 +89,17 @@ func (p *PeerCollector) Describe(ch chan<- *prometheus.Desc) {
 func (p *PeerCollector) Collect(ch chan<- prometheus.Metric) {
 	listPeersResp, err := p.lnd.ListPeers(context.Background())
 	if err != nil {
-		p.errChan <- fmt.Errorf("PeerCollector ListPeers failed with: "+
-			"%v", err)
+		errWithContext := fmt.Errorf("PeerCollector ListPeers failed with: "+
+			"%w", err)
+		Logger.Error(errWithContext)
+
+		// A deadline exceeded is expected if lnd is temporarily slow
+		// to respond (e.g. due to database load). We just skip this
+		// scrape cycle and let Prometheus retry on the next interval.
+		if !IsDeadlineExceeded(err) {
+			p.errChan <- errWithContext
+		}
+
 		return
 	}
 
