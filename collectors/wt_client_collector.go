@@ -75,8 +75,14 @@ func (c *WtClientCollector) Collect(ch chan<- prometheus.Metric) {
 			return
 		}
 
-		c.errChan <- fmt.Errorf("WtClientCollector ListTowers failed "+
-			"with: %v", err)
+		errWithContext := fmt.Errorf("WtClientCollector ListTowers failed "+
+			"with: %w", err)
+		Logger.Error(errWithContext)
+
+		if !IsDeadlineExceeded(err) {
+			c.errChan <- errWithContext
+		}
+
 		return
 	}
 

@@ -322,8 +322,14 @@ func (g *GraphCollector) Describe(ch chan<- *prometheus.Desc) {
 func (g *GraphCollector) Collect(ch chan<- prometheus.Metric) {
 	resp, err := g.lnd.DescribeGraph(context.Background(), false)
 	if err != nil {
-		g.errChan <- fmt.Errorf("GraphCollector DescribeGraph failed "+
-			"with: %v", err)
+		errWithContext := fmt.Errorf("GraphCollector DescribeGraph failed "+
+			"with: %w", err)
+		Logger.Error(errWithContext)
+
+		if !IsDeadlineExceeded(err) {
+			g.errChan <- errWithContext
+		}
+
 		return
 	}
 
@@ -340,8 +346,14 @@ func (g *GraphCollector) Collect(ch chan<- prometheus.Metric) {
 
 	networkInfo, err := g.lnd.NetworkInfo(context.Background())
 	if err != nil {
-		g.errChan <- fmt.Errorf("GraphCollector NetworkInfo failed "+
-			"with: %v", err)
+		errWithContext := fmt.Errorf("GraphCollector NetworkInfo failed "+
+			"with: %w", err)
+		Logger.Error(errWithContext)
+
+		if !IsDeadlineExceeded(err) {
+			g.errChan <- errWithContext
+		}
+
 		return
 	}
 

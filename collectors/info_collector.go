@@ -50,8 +50,17 @@ func (c *InfoCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *InfoCollector) Collect(ch chan<- prometheus.Metric) {
 	resp, err := c.lnd.GetInfo(context.Background())
 	if err != nil {
-		c.errChan <- fmt.Errorf("InfoCollector GetInfo failed with: "+
-			"%v", err)
+		errWithContext := fmt.Errorf("InfoCollector GetInfo failed with: "+
+			"%w", err)
+		Logger.Error(errWithContext)
+
+		// A deadline exceeded is expected if lnd is temporarily slow
+		// to respond (e.g. due to database load). We just skip this
+		// scrape cycle and let Prometheus retry on the next interval.
+		if !IsDeadlineExceeded(err) {
+			c.errChan <- errWithContext
+		}
+
 		return
 	}
 

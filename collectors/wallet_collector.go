@@ -115,8 +115,14 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 		context.Background(), 0, math.MaxInt32,
 	)
 	if err != nil {
-		u.errChan <- fmt.Errorf("WalletCollector ListUnspent failed "+
-			"with: %v", err)
+		errWithContext := fmt.Errorf("WalletCollector ListUnspent failed "+
+			"with: %w", err)
+		Logger.Error(errWithContext)
+
+		if !IsDeadlineExceeded(err) {
+			u.errChan <- errWithContext
+		}
+
 		return
 	}
 
@@ -171,8 +177,14 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 	// balance at this instance.
 	walletBal, err := u.lnd.Client.WalletBalance(context.Background())
 	if err != nil {
-		u.errChan <- fmt.Errorf("WalletCollector WalletBalance "+
-			"failed with: %v", err)
+		errWithContext := fmt.Errorf("WalletCollector WalletBalance "+
+			"failed with: %w", err)
+		Logger.Error(errWithContext)
+
+		if !IsDeadlineExceeded(err) {
+			u.errChan <- errWithContext
+		}
+
 		return
 	}
 
@@ -187,8 +199,14 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 
 	accounts, err := u.lnd.WalletKit.ListAccounts(context.Background(), "", 0)
 	if err != nil {
-		u.errChan <- fmt.Errorf("WalletCollector ListAccounts"+
-			"failed with: %v", err)
+		errWithContext := fmt.Errorf("WalletCollector ListAccounts "+
+			"failed with: %w", err)
+		Logger.Error(errWithContext)
+
+		if !IsDeadlineExceeded(err) {
+			u.errChan <- errWithContext
+		}
+
 		return
 	}
 
