@@ -202,7 +202,12 @@ func NewChannelsCollector(lnd lndclient.LightningClient, errChan chan<- error,
 		for {
 			err := collector.refreshClosedChannelsCache()
 			if err != nil {
-				errChan <- err
+				Logger.Errorf("ChannelsCollector refreshClosedChannelsCache "+
+					"failed with: %v", err)
+
+				if !IsDeadlineExceeded(err) {
+					errChan <- err
+				}
 			}
 
 			select {
@@ -293,8 +298,14 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 	// pending channel balances.
 	chanBalResp, err := c.lnd.ChannelBalance(context.Background())
 	if err != nil {
-		c.errChan <- fmt.Errorf("ChannelsCollector ChannelBalance "+
-			"failed with: %v", err)
+		errWithContext := fmt.Errorf("ChannelsCollector ChannelBalance "+
+			"failed with: %w", err)
+		Logger.Error(errWithContext)
+
+		if !IsDeadlineExceeded(err) {
+			c.errChan <- errWithContext
+		}
+
 		return
 	}
 
@@ -341,8 +352,14 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 	// as well as the number of pending HTLCs.
 	listChannelsResp, err := c.lnd.ListChannels(context.Background(), false, false)
 	if err != nil {
-		c.errChan <- fmt.Errorf("ChannelsCollector ListChannels "+
-			"failed with: %v", err)
+		errWithContext := fmt.Errorf("ChannelsCollector ListChannels "+
+			"failed with: %w", err)
+		Logger.Error(errWithContext)
+
+		if !IsDeadlineExceeded(err) {
+			c.errChan <- errWithContext
+		}
+
 		return
 	}
 
@@ -452,8 +469,14 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 	// Get the list of pending channels
 	pendingChannelsResp, err := c.lnd.PendingChannels(context.Background())
 	if err != nil {
-		c.errChan <- fmt.Errorf("ChannelsCollector PendingChannels "+
-			"failed with: %v", err)
+		errWithContext := fmt.Errorf("ChannelsCollector PendingChannels "+
+			"failed with: %w", err)
+		Logger.Error(errWithContext)
+
+		if !IsDeadlineExceeded(err) {
+			c.errChan <- errWithContext
+		}
+
 		return
 	}
 	ch <- prometheus.MustNewConstMetric(
@@ -539,8 +562,14 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 	// Get all remote policies
 	remotePolicies, err := c.getRemotePolicies(getInfoResp.IdentityPubkey)
 	if err != nil {
-		c.errChan <- fmt.Errorf("ChannelsCollector getRemotePolicies "+
-			"failed with: %v", err)
+		errWithContext := fmt.Errorf("ChannelsCollector getRemotePolicies "+
+			"failed with: %w", err)
+		Logger.Error(errWithContext)
+
+		if !IsDeadlineExceeded(err) {
+			c.errChan <- errWithContext
+		}
+
 		return
 	}
 
