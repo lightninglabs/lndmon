@@ -94,7 +94,19 @@ func DefaultConfig() *PrometheusConfig {
 // the address to listen for Prometheus on and an lnd gRPC client.
 func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
 	monitoringCfg *MonitoringConfig,
-	quitChan chan struct{}) *PrometheusExporter {
+	quitChan chan struct{}) (*PrometheusExporter, error) {
+
+	// Initialize logging before constructing any collectors. Some collectors
+	// launch background goroutines that log on failure, so the package-global
+	// Logger must be ready beforehand. A failure here is fatal: we return the
+	// error so lndmon exits instead of running with collectors that would
+	// dereference a nil Logger.
+	if err := initLogRotator(
+		filepath.Join(cfg.LogDir, defaultLogFilename),
+		defaultLogFileSize, defaultMaxLogFile,
+	); err != nil {
+		return nil, err
+	}
 
 	// We have six collectors and a htlc monitor running, so we buffer our
 	// error channel by 8 so that we do not need to consume all errors from
@@ -145,21 +157,12 @@ func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
 		htlcMonitor:     htlcMonitor,
 		paymentsMonitor: paymentsMonitor,
 		errChan:         errChan,
-	}
+	}, nil
 }
 
 // Start registers all relevant metrics with the Prometheus library, then
 // launches the HTTP server that Prometheus will hit to scrape our metrics.
 func (p *PrometheusExporter) Start() error {
-	err := initLogRotator(
-		filepath.Join(p.cfg.LogDir, defaultLogFilename),
-		defaultLogFileSize,
-		defaultMaxLogFile,
-	)
-	if err != nil {
-		return err
-	}
-
 	Logger.Info("Starting Prometheus exporter...")
 	if p.lnd == nil {
 		return fmt.Errorf("cannot start PrometheusExporter without " +

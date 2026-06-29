@@ -194,7 +194,10 @@ func NewChannelsCollector(lnd lndclient.LightningClient, errChan chan<- error,
 		quit:                quitChan,
 	}
 
-	// Start a ticker to update the cache once per 10m
+	// Start a ticker to update the cache once per 10m. This is safe to
+	// launch here because NewPrometheusExporter initializes logging before
+	// constructing any collector, so the package-global Logger is ready by
+	// the time this goroutine can log on failure.
 	go func() {
 		ticker := time.NewTicker(cacheRefreshInterval)
 		defer ticker.Stop()
