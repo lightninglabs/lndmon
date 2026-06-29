@@ -18,6 +18,13 @@ CP := cp
 MAKE := make
 DOCKER_TOOLS = docker run -v $$(pwd):/build lndmon-tools
 
+DOCKER_IMAGE := lndmon
+# Derive the tag from the current commit, appending "-dirty" if the working
+# tree has uncommitted changes. --match='__no_such_tag__' forces git to ignore
+# all tags and fall back to the short commit hash via --always.
+DOCKER_COMMIT := $(shell git describe --always --dirty --match='__no_such_tag__')
+DOCKER_TAG := $(DOCKER_COMMIT)
+
 LINT = $(LINT_BIN) run -v
 
 default: build
@@ -43,6 +50,16 @@ build:
 # =========
 # UTILITIES
 # =========
+docker-build:
+	@$(call print, "Building lndmon docker image.")
+	docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
+
+docker-push:
+	@$(call print, "Pushing lndmon docker image.")
+	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
+
+docker-build-push: docker-build docker-push
+
 docker-tools:
 	@$(call print, "Building tools docker image.")
 	docker build -q -t lndmon-tools $(TOOLS_DIR)
