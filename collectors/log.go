@@ -10,17 +10,19 @@ import (
 )
 
 var (
-	// Logger for lndmon's main process.
-	Logger btclog.Logger
+	// Logger for lndmon's main process. It defaults to a disabled logger
+	// so that it is safe to use before initLogRotator has been called
+	// (e.g. from collector goroutines launched at construction time).
+	Logger btclog.Logger = btclog.Disabled
 
 	// htlcLogger is a logger for lndmon's htlc collector.
-	htlcLogger btclog.Logger
+	htlcLogger btclog.Logger = btclog.Disabled
 
 	// paymentLogger is a logger for lndmon's payments monitor.
-	paymentLogger btclog.Logger
+	paymentLogger btclog.Logger = btclog.Disabled
 
 	// watchtowerLogger is a logger for lndmon's watchtower client.
-	watchtowerLogger btclog.Logger
+	watchtowerLogger btclog.Logger = btclog.Disabled
 
 	noOpShutdownFunc = func() {}
 )
