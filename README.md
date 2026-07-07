@@ -134,6 +134,24 @@ cd lndmon/cmd/lndmon
 go build
 ```
 
+### Makefile commands
+
+The repository ships with a `Makefile` that wraps the most common development
+tasks. Run `make list` to print all available targets, or use one of the
+commands below:
+
+| Command | Description |
+| --- | --- |
+| `make build` | Build the `lndmon` binary. |
+| `make docker-build` | Build the `lndmon` Docker image. The tag is derived from the current commit (e.g. `lndmon:<commit>`), with a `-dirty` suffix when the working tree has uncommitted changes. Override with `DOCKER_IMAGE`/`DOCKER_TAG`, e.g. `make docker-build DOCKER_TAG=latest`. |
+| `make docker-push` | Push the `lndmon` Docker image (uses the same `DOCKER_IMAGE`/`DOCKER_TAG` as `docker-build`; set `DOCKER_IMAGE` to a registry path to push elsewhere). |
+| `make docker-build-push` | Build and then push the `lndmon` Docker image in one step. |
+| `make docker-tools` | Build the `lndmon-tools` Docker image used for linting. |
+| `make fmt` | Fix imports and format the source. |
+| `make lint` | Run the linters (uses the tools Docker image). |
+| `make clean` | Remove the built `lndmon` binary. |
+| `make list` | List all available `make` targets. |
+
 ## Options
 
 ```
