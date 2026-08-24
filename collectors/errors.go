@@ -26,6 +26,19 @@ func IsDeadlineExceeded(err error) bool {
 		return false
 	}
 
+	// If the error is (or wraps) a gRPC status error, check its code
+	// directly. This catches server-side deadlines that arrive with a
+	// non-standard description, e.g. "stream terminated by RST_STREAM with
+	// error code: CANCEL", where the code is DeadlineExceeded but the
+	// description doesn't match context.DeadlineExceeded.
+	if st, ok := status.FromError(err); ok &&
+		st.Code() == codes.DeadlineExceeded {
+
+		return true
+	}
+
+	// The error may also be a bare context error (client-side deadline)
+	// that isn't wrapped in a gRPC status.
 	st := status.FromContextError(err)
 	if st.Code() == codes.DeadlineExceeded {
 		return true

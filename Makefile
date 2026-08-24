@@ -9,6 +9,7 @@ GO_BIN := ${GOPATH}/bin
 LINT_BIN := $(GO_BIN)/golangci-lint
 
 GOBUILD := go build -v
+GOTEST := go test -v
 
 GOFILES_NOVENDOR = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 GOLIST := go list -deps $(PKG)/... | grep '$(PKG)'| grep -v '/vendor/'
@@ -46,6 +47,14 @@ goimports:
 build:
 	@$(call print, "Building lndmon.")
 	$(GOBUILD) $(PKG)/cmd/lndmon
+
+# =======
+# TESTING
+# =======
+
+test:
+	@$(call print, "Running unit tests.")
+	$(GOTEST) ./...
 
 # =========
 # UTILITIES
