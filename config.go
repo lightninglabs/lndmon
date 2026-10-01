@@ -57,6 +57,12 @@ type config struct {
 
 	// DisablePayments disables the collection of payments metrics.
 	DisablePayments bool `long:"disablepayments" description:"Do not collect payments metrics"`
+
+	// DisableInvoices disables the collection of invoice metrics.
+	DisableInvoices bool `long:"disableinvoices" description:"Do not collect invoice metrics"`
+
+	// SeedMetrics restores the new payment metrics from retained history.
+	SeedMetrics bool `long:"seedmetrics" description:"Seed payment volume, fees, duration and hop metrics from retained lnd history"`
 }
 
 var defaultConfig = config{

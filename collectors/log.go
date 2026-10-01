@@ -19,6 +19,9 @@ var (
 	// paymentLogger is a logger for lndmon's payments monitor.
 	paymentLogger btclog.Logger
 
+	// invoiceLogger is a logger for lndmon's invoices monitor.
+	invoiceLogger btclog.Logger
+
 	// watchtowerLogger is a logger for lndmon's watchtower client.
 	watchtowerLogger btclog.Logger
 
@@ -55,6 +58,7 @@ func initLogRotator(logFile string, maxLogFileSize, maxLogFiles int) error {
 	Logger = logManager.GenSubLogger("LNDMON", noOpShutdownFunc)
 	htlcLogger = logManager.GenSubLogger("HTLC", noOpShutdownFunc)
 	paymentLogger = logManager.GenSubLogger("PMNT", noOpShutdownFunc)
+	invoiceLogger = logManager.GenSubLogger("INVC", noOpShutdownFunc)
 	watchtowerLogger = logManager.GenSubLogger("WTCL", noOpShutdownFunc)
 
 	// Set log level.
