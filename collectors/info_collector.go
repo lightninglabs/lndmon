@@ -44,28 +44,31 @@ func (c *InfoCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.info
 }
 
-// Collect is called by the Prometheus registry when collecting metrics.
+// Name identifies this collector in the scrape outcome log.
+func (c *InfoCollector) Name() string {
+	return "info"
+}
+
+// Collect gathers the node info metric using the scrape's context so an
+// abandoned scrape cancels the in-flight lnd call. The error (if any) is
+// returned for the handler to classify and log.
 //
-// NOTE: Part of the prometheus.Collector interface.
-func (c *InfoCollector) Collect(ch chan<- prometheus.Metric) {
-	resp, err := c.lnd.GetInfo(context.Background())
+// NOTE: Part of the scrapeCollector interface.
+func (c *InfoCollector) Collect(ctx context.Context,
+	ch chan<- prometheus.Metric) error {
+
+	// GetInfo is known to sometimes randomly take way longer than on average
+	// (database interactions?), so a slow or abandoned scrape most often
+	// shows up on this call.
+	resp, err := c.lnd.GetInfo(ctx)
 	if err != nil {
-		errWithContext := fmt.Errorf("InfoCollector GetInfo failed with: "+
-			"%w", err)
-		Logger.Error(errWithContext)
-
-		// A deadline exceeded is expected if lnd is temporarily slow
-		// to respond (e.g. due to database load). We just skip this
-		// scrape cycle and let Prometheus retry on the next interval.
-		if !IsDeadlineExceeded(err) {
-			c.errChan <- errWithContext
-		}
-
-		return
+		return fmt.Errorf("InfoCollector GetInfo failed with: %w", err)
 	}
 
 	ch <- prometheus.MustNewConstMetric(
 		c.info, prometheus.GaugeValue, 0, resp.Version,
 		resp.Alias, hex.EncodeToString(resp.IdentityPubkey[:]),
 	)
+
+	return nil
 }
