@@ -163,6 +163,7 @@ Application Options:
       --primarynode=                                                 Public key of the primary node in a primary-gateway setup
       --disablegraph                                                 Do not collect graph metrics
       --disablehtlc                                                  Do not collect HTLCs metrics
+      --disablewatchtower                                            Do not collect watchtower client metrics
       --disablepayments                                              Do not collect payments metrics
 
 prometheus:

@@ -55,6 +55,9 @@ type config struct {
 	// DisableHtlc disables the collection of HTLCs metrics.
 	DisableHtlc bool `long:"disablehtlc" description:"Do not collect HTLCs metrics"`
 
+	// DisableWatchtower disables collection of watchtower client metrics.
+	DisableWatchtower bool `long:"disablewatchtower" description:"Do not collect watchtower client metrics"`
+
 	// DisablePayments disables the collection of payments metrics.
 	DisablePayments bool `long:"disablepayments" description:"Do not collect payments metrics"`
 }
