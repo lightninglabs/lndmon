@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lightninglabs/lndclient"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -14,19 +13,10 @@ type ChainCollector struct {
 	bestBlockTimestamp *prometheus.Desc
 	syncedToChain      *prometheus.Desc
 	syncedToGraph      *prometheus.Desc
-
-	lnd lndclient.LightningClient
-
-	// errChan is a channel that we send any errors that we encounter into.
-	// This channel should be buffered so that it does not block sends.
-	errChan chan<- error
 }
 
-// NewChainCollector returns a new instance of the ChainCollector for the target
-// lnd client.
-func NewChainCollector(lnd lndclient.LightningClient,
-	errChan chan<- error) *ChainCollector {
-
+// NewChainCollector returns a new instance of the ChainCollector.
+func NewChainCollector() *ChainCollector {
 	return &ChainCollector{
 		bestBlockHeight: prometheus.NewDesc(
 			"lnd_chain_block_height", "best block height from lnd",
@@ -47,8 +37,6 @@ func NewChainCollector(lnd lndclient.LightningClient,
 			"lnd is synced to the graph",
 			nil, nil,
 		),
-		lnd:     lnd,
-		errChan: errChan,
 	}
 }
 
@@ -77,10 +65,9 @@ func (c *ChainCollector) Name() string {
 func (c *ChainCollector) Collect(ctx context.Context,
 	ch chan<- prometheus.Metric) error {
 
-	// GetInfo is known to sometimes randomly take way longer than on average
-	// (database interactions?), so a slow or abandoned scrape most often
-	// shows up on this call.
-	resp, err := c.lnd.GetInfo(ctx)
+	// getInfo shares a single GetInfo RPC across the chain, info and channels
+	// collectors for this scrape (see infoProvider).
+	resp, err := getInfo(ctx)
 	if err != nil {
 		return fmt.Errorf("ChainCollector GetInfo failed with: %w", err)
 	}

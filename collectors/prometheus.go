@@ -115,10 +115,11 @@ func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
 		return nil, err
 	}
 
-	// We have six collectors and a htlc monitor running, so we buffer our
-	// error channel by 8 so that we do not need to consume all errors from
-	// this channel (on the first one, we'll start shutting down, but a few
-	// could arrive quickly in the case where lnd is shutting down).
+	// Our scrape collectors and the htlc and payments monitors can all send
+	// errors here, so we buffer the error channel by 8 so that we do not need
+	// to consume all errors from this channel (on the first one, we'll start
+	// shutting down, but a few could arrive quickly in the case where lnd is
+	// shutting down).
 	errChan := make(chan error, 8)
 
 	htlcMonitor := newHtlcMonitor(lnd.Router, errChan)
@@ -133,11 +134,11 @@ func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
 	// The pull collectors query lnd on each scrape. They are context-aware so
 	// an abandoned scrape cancels their in-flight lnd calls.
 	scrapeCollectors := []scrapeCollector{
-		NewChainCollector(lnd.Client, errChan),
+		NewChainCollector(),
 		chanCollector,
 		NewWalletCollector(lnd, errChan),
 		NewPeerCollector(lnd.Client, errChan),
-		NewInfoCollector(lnd.Client, errChan),
+		NewInfoCollector(),
 		NewStateCollector(lnd, errChan, monitoringCfg.ProgramStartTime),
 		NewWtClientCollector(lnd, errChan),
 	}
@@ -323,12 +324,22 @@ func (p *PrometheusExporter) serveScrape(w http.ResponseWriter,
 	// collector to this request's context. A fresh registry and binding per
 	// request keeps concurrent scrapes isolated.
 	results := make([]*collectorResult, len(p.scrapeCollectors))
+
+	// Build one GetInfo provider for this scrape and inject it into the
+	// context every bound collector runs under, so the chain, info and
+	// channels collectors share a single GetInfo RPC instead of each issuing
+	// their own. It must be allocated here, per scrape, so concurrent scrapes
+	// never share a cached result.
+	scrapeCtx := withInfoProvider(
+		r.Context(), newInfoProvider(p.lnd.Client),
+	)
+
 	reqReg := prometheus.NewRegistry()
 	for i, sc := range p.scrapeCollectors {
 		results[i] = &collectorResult{name: sc.Name()}
 		reqReg.MustRegister(&boundCollector{
 			sc:     sc,
-			ctx:    r.Context(),
+			ctx:    scrapeCtx,
 			result: results[i],
 		})
 	}

@@ -5,33 +5,21 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/lightninglabs/lndclient"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 // InfoCollector is a collector that keeps track of node information.
 type InfoCollector struct {
 	info *prometheus.Desc
-
-	lnd lndclient.LightningClient
-
-	// errChan is a channel that we send any errors that we encounter into.
-	// This channel should be buffered so that it does not block sends.
-	errChan chan<- error
 }
 
-// NewInfoCollector returns a new instance of the InfoCollector for the target
-// lnd client.
-func NewInfoCollector(lnd lndclient.LightningClient,
-	errChan chan<- error) *InfoCollector {
-
+// NewInfoCollector returns a new instance of the InfoCollector.
+func NewInfoCollector() *InfoCollector {
 	labels := []string{"version", "alias", "pubkey"}
 	return &InfoCollector{
 		info: prometheus.NewDesc(
 			"lnd_info", "lnd node info", labels, nil,
 		),
-		lnd:     lnd,
-		errChan: errChan,
 	}
 }
 
@@ -57,10 +45,9 @@ func (c *InfoCollector) Name() string {
 func (c *InfoCollector) Collect(ctx context.Context,
 	ch chan<- prometheus.Metric) error {
 
-	// GetInfo is known to sometimes randomly take way longer than on average
-	// (database interactions?), so a slow or abandoned scrape most often
-	// shows up on this call.
-	resp, err := c.lnd.GetInfo(ctx)
+	// getInfo shares a single GetInfo RPC across the chain, info and channels
+	// collectors for this scrape (see infoProvider).
+	resp, err := getInfo(ctx)
 	if err != nil {
 		return fmt.Errorf("InfoCollector GetInfo failed with: %w", err)
 	}

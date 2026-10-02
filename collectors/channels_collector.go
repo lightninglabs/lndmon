@@ -323,11 +323,10 @@ func (c *ChannelsCollector) Collect(ctx context.Context,
 		float64(chanBalResp.PendingBalance),
 	)
 
-	// Obtain information w.r.t the number of channels we have open. GetInfo
-	// is known to sometimes randomly take way longer than on average
-	// (database interactions?), so a slow or abandoned scrape often shows up
-	// on this call.
-	getInfoResp, err := c.lnd.GetInfo(ctx)
+	// Obtain the number of channels we have open. getInfo shares a single
+	// GetInfo RPC across the chain, info and channels collectors for this
+	// scrape (see infoProvider).
+	getInfoResp, err := getInfo(ctx)
 	if err != nil {
 		return fmt.Errorf("ChannelsCollector GetInfo failed with: %w", err)
 	}

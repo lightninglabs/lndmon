@@ -10,10 +10,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/btcsuite/btclog/v2"
+	"github.com/lightninglabs/lndclient"
+	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -150,6 +154,7 @@ func TestServeScrapeErrorRouting(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			errChan := make(chan error, 8)
 			p := &PrometheusExporter{
+				lnd: &lndclient.LndServices{},
 				scrapeCollectors: []scrapeCollector{
 					newFixedScrapeCollector("x", tt.err),
 				},
@@ -190,6 +195,7 @@ func TestServeScrapeCancellationPropagates(t *testing.T) {
 	errChan := make(chan error, 8)
 	c := newBlockingScrapeCollector()
 	p := &PrometheusExporter{
+		lnd:              &lndclient.LndServices{},
 		scrapeCollectors: []scrapeCollector{c},
 		errChan:          errChan,
 	}
@@ -239,6 +245,7 @@ func TestServeScrapeLogsRealError(t *testing.T) {
 
 	errChan := make(chan error, 8)
 	p := &PrometheusExporter{
+		lnd: &lndclient.LndServices{},
 		scrapeCollectors: []scrapeCollector{
 			newFixedScrapeCollector(
 				"x", errors.New("distinct-collector-error"),
@@ -256,5 +263,88 @@ func TestServeScrapeLogsRealError(t *testing.T) {
 	if !strings.Contains(buf.String(), "distinct-collector-error") {
 		t.Fatalf("real collector error was not logged at scrape time; "+
 			"log was: %q", buf.String())
+	}
+}
+
+// getInfoProbe is a scrapeCollector that records what getInfo returns, used to
+// drive the shared-GetInfo wiring through serveScrape end to end.
+type getInfoProbe struct {
+	desc *prometheus.Desc
+	name string
+
+	mu   sync.Mutex
+	info *lndclient.Info
+	err  error
+}
+
+func newGetInfoProbe(name string) *getInfoProbe {
+	return &getInfoProbe{
+		name: name,
+		desc: prometheus.NewDesc("test_getinfo_probe_"+name, "", nil, nil),
+	}
+}
+
+func (c *getInfoProbe) Name() string { return c.name }
+
+func (c *getInfoProbe) Describe(ch chan<- *prometheus.Desc) { ch <- c.desc }
+
+func (c *getInfoProbe) Collect(ctx context.Context,
+	_ chan<- prometheus.Metric) error {
+
+	info, err := getInfo(ctx)
+	c.mu.Lock()
+	c.info, c.err = info, err
+	c.mu.Unlock()
+
+	return err
+}
+
+// TestServeScrapeSharesGetInfo drives three getInfo-calling collectors through
+// serveScrape and asserts the per-scrape provider wiring makes a single shared
+// GetInfo whose result reaches every collector.
+func TestServeScrapeSharesGetInfo(t *testing.T) {
+	Logger = btclog.Disabled
+
+	info := &lndclient.Info{Alias: "e2e"}
+	fake := &fakeInfoLND{info: info}
+
+	probes := []*getInfoProbe{
+		newGetInfoProbe("one"),
+		newGetInfoProbe("two"),
+		newGetInfoProbe("three"),
+	}
+	scs := make([]scrapeCollector, len(probes))
+	for i, probe := range probes {
+		scs[i] = probe
+	}
+
+	p := &PrometheusExporter{
+		lnd:              &lndclient.LndServices{Client: fake},
+		scrapeCollectors: scs,
+		errChan:          make(chan error, 8),
+	}
+
+	p.serveScrape(
+		httptest.NewRecorder(),
+		httptest.NewRequest(http.MethodGet, "/metrics", nil),
+		discardLogger(),
+	)
+
+	if got := atomic.LoadInt64(&fake.calls); got != 1 {
+		t.Fatalf("serveScrape made %d GetInfo calls, want 1 shared call", got)
+	}
+	for _, probe := range probes {
+		probe.mu.Lock()
+		gotInfo, gotErr := probe.info, probe.err
+		probe.mu.Unlock()
+
+		if gotErr != nil {
+			t.Fatalf("collector %q got error from getInfo: %v",
+				probe.name, gotErr)
+		}
+		if gotInfo != info {
+			t.Fatalf("collector %q did not receive the shared info",
+				probe.name)
+		}
 	}
 }
