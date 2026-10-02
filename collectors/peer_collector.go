@@ -83,24 +83,22 @@ func (p *PeerCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- p.bytesRecvDesc
 }
 
-// Collect is called by the Prometheus registry when collecting metrics.
+// Name identifies this collector in the scrape outcome log.
+func (p *PeerCollector) Name() string {
+	return "peer"
+}
+
+// Collect gathers the peer metrics using the scrape's context so an abandoned
+// scrape cancels the in-flight lnd call. The error (if any) is returned for the
+// handler to classify and log.
 //
-// NOTE: Part of the prometheus.Collector interface.
-func (p *PeerCollector) Collect(ch chan<- prometheus.Metric) {
-	listPeersResp, err := p.lnd.ListPeers(context.Background())
+// NOTE: Part of the scrapeCollector interface.
+func (p *PeerCollector) Collect(ctx context.Context,
+	ch chan<- prometheus.Metric) error {
+
+	listPeersResp, err := p.lnd.ListPeers(ctx)
 	if err != nil {
-		errWithContext := fmt.Errorf("PeerCollector ListPeers failed with: "+
-			"%w", err)
-		Logger.Error(errWithContext)
-
-		// A deadline exceeded is expected if lnd is temporarily slow
-		// to respond (e.g. due to database load). We just skip this
-		// scrape cycle and let Prometheus retry on the next interval.
-		if !IsDeadlineExceeded(err) {
-			p.errChan <- errWithContext
-		}
-
-		return
+		return fmt.Errorf("PeerCollector ListPeers failed with: %w", err)
 	}
 
 	ch <- prometheus.MustNewConstMetric(
@@ -132,4 +130,6 @@ func (p *PeerCollector) Collect(ch chan<- prometheus.Metric) {
 			float64(peer.BytesReceived), pubkeyStr,
 		)
 	}
+
+	return nil
 }

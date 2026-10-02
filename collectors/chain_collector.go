@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lightninglabs/lndclient"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -14,19 +13,10 @@ type ChainCollector struct {
 	bestBlockTimestamp *prometheus.Desc
 	syncedToChain      *prometheus.Desc
 	syncedToGraph      *prometheus.Desc
-
-	lnd lndclient.LightningClient
-
-	// errChan is a channel that we send any errors that we encounter into.
-	// This channel should be buffered so that it does not block sends.
-	errChan chan<- error
 }
 
-// NewChainCollector returns a new instance of the ChainCollector for the target
-// lnd client.
-func NewChainCollector(lnd lndclient.LightningClient,
-	errChan chan<- error) *ChainCollector {
-
+// NewChainCollector returns a new instance of the ChainCollector.
+func NewChainCollector() *ChainCollector {
 	return &ChainCollector{
 		bestBlockHeight: prometheus.NewDesc(
 			"lnd_chain_block_height", "best block height from lnd",
@@ -47,8 +37,6 @@ func NewChainCollector(lnd lndclient.LightningClient,
 			"lnd is synced to the graph",
 			nil, nil,
 		),
-		lnd:     lnd,
-		errChan: errChan,
 	}
 }
 
@@ -64,27 +52,24 @@ func (c *ChainCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.syncedToGraph
 }
 
-// Collect is called by the Prometheus registry when collecting metrics.
+// Name identifies this collector in the scrape outcome log.
+func (c *ChainCollector) Name() string {
+	return "chain"
+}
+
+// Collect gathers the chain metrics using the scrape's context so an abandoned
+// scrape cancels the in-flight lnd call. The error (if any) is returned for the
+// handler to classify and log.
 //
-// NOTE: Part of the prometheus.Collector interface.
-func (c *ChainCollector) Collect(ch chan<- prometheus.Metric) {
-	resp, err := c.lnd.GetInfo(context.Background())
+// NOTE: Part of the scrapeCollector interface.
+func (c *ChainCollector) Collect(ctx context.Context,
+	ch chan<- prometheus.Metric) error {
+
+	// getInfo shares a single GetInfo RPC across the chain, info and channels
+	// collectors for this scrape (see infoProvider).
+	resp, err := getInfo(ctx)
 	if err != nil {
-		errWithContext := fmt.Errorf("ChainCollector GetInfo "+
-			"failed with: %w", err)
-		Logger.Error(errWithContext)
-
-		// If this isn't just a timeout, we'll want to exit to give the
-		// runtime (Docker/k8s/systemd) a chance to restart us, in case
-		// something with the lnd connection and/or credentials has
-		// changed. We just do this check for the GetInfo call, since
-		// that's known to sometimes randomly take way longer than on
-		// average (database interactions?).
-		if !IsDeadlineExceeded(err) {
-			c.errChan <- errWithContext
-		}
-
-		return
+		return fmt.Errorf("ChainCollector GetInfo failed with: %w", err)
 	}
 
 	ch <- prometheus.MustNewConstMetric(
@@ -106,6 +91,8 @@ func (c *ChainCollector) Collect(ch chan<- prometheus.Metric) {
 		c.syncedToGraph, prometheus.GaugeValue,
 		float64(boolToInt(resp.SyncedToGraph)),
 	)
+
+	return nil
 }
 
 func boolToInt(arg bool) uint8 {

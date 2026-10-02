@@ -293,23 +293,25 @@ func anchorStateToString(state lndclient.ForceCloseAnchorState) string {
 	}
 }
 
-// Collect is called by the Prometheus registry when collecting metrics.
+// Name identifies this collector in the scrape outcome log.
+func (c *ChannelsCollector) Name() string {
+	return "channels"
+}
+
+// Collect gathers the channel metrics using the scrape's context so an
+// abandoned scrape cancels the in-flight lnd calls. The error (if any) is
+// returned for the handler to classify and log.
 //
-// NOTE: Part of the prometheus.Collector interface.
-func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
+// NOTE: Part of the scrapeCollector interface.
+func (c *ChannelsCollector) Collect(ctx context.Context,
+	ch chan<- prometheus.Metric) error {
+
 	// First, based on the channel balance, we'll export the total and
 	// pending channel balances.
-	chanBalResp, err := c.lnd.ChannelBalance(context.Background())
+	chanBalResp, err := c.lnd.ChannelBalance(ctx)
 	if err != nil {
-		errWithContext := fmt.Errorf("ChannelsCollector ChannelBalance "+
-			"failed with: %w", err)
-		Logger.Error(errWithContext)
-
-		if !IsDeadlineExceeded(err) {
-			c.errChan <- errWithContext
-		}
-
-		return
+		return fmt.Errorf("ChannelsCollector ChannelBalance failed "+
+			"with: %w", err)
 	}
 
 	ch <- prometheus.MustNewConstMetric(
@@ -321,25 +323,12 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 		float64(chanBalResp.PendingBalance),
 	)
 
-	// Obtain information w.r.t the number of channels we
-	// have open.
-	getInfoResp, err := c.lnd.GetInfo(context.Background())
+	// Obtain the number of channels we have open. getInfo shares a single
+	// GetInfo RPC across the chain, info and channels collectors for this
+	// scrape (see infoProvider).
+	getInfoResp, err := getInfo(ctx)
 	if err != nil {
-		errWithContext := fmt.Errorf("ChannelsCollector GetInfo "+
-			"failed with: %w", err)
-		Logger.Error(errWithContext)
-
-		// If this isn't just a timeout, we'll want to exit to give the
-		// runtime (Docker/k8s/systemd) a chance to restart us, in case
-		// something with the lnd connection and/or credentials has
-		// changed. We just do this check for the GetInfo call, since
-		// that's known to sometimes randomly take way longer than on
-		// average (database interactions?).
-		if !IsDeadlineExceeded(err) {
-			c.errChan <- errWithContext
-		}
-
-		return
+		return fmt.Errorf("ChannelsCollector GetInfo failed with: %w", err)
 	}
 
 	ch <- prometheus.MustNewConstMetric(
@@ -353,17 +342,10 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 
 	// Next, for each channel we'll export the total sum of our balances,
 	// as well as the number of pending HTLCs.
-	listChannelsResp, err := c.lnd.ListChannels(context.Background(), false, false)
+	listChannelsResp, err := c.lnd.ListChannels(ctx, false, false)
 	if err != nil {
-		errWithContext := fmt.Errorf("ChannelsCollector ListChannels "+
-			"failed with: %w", err)
-		Logger.Error(errWithContext)
-
-		if !IsDeadlineExceeded(err) {
-			c.errChan <- errWithContext
-		}
-
-		return
+		return fmt.Errorf("ChannelsCollector ListChannels failed "+
+			"with: %w", err)
 	}
 
 	// statusLabel is a small helper function returns the proper status
@@ -470,17 +452,10 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	// Get the list of pending channels
-	pendingChannelsResp, err := c.lnd.PendingChannels(context.Background())
+	pendingChannelsResp, err := c.lnd.PendingChannels(ctx)
 	if err != nil {
-		errWithContext := fmt.Errorf("ChannelsCollector PendingChannels "+
-			"failed with: %w", err)
-		Logger.Error(errWithContext)
-
-		if !IsDeadlineExceeded(err) {
-			c.errChan <- errWithContext
-		}
-
-		return
+		return fmt.Errorf("ChannelsCollector PendingChannels failed "+
+			"with: %w", err)
 	}
 	ch <- prometheus.MustNewConstMetric(
 		c.numPendingChansDesc, prometheus.GaugeValue,
@@ -563,17 +538,12 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	// Get all remote policies
-	remotePolicies, err := c.getRemotePolicies(getInfoResp.IdentityPubkey)
+	remotePolicies, err := c.getRemotePolicies(
+		ctx, getInfoResp.IdentityPubkey,
+	)
 	if err != nil {
-		errWithContext := fmt.Errorf("ChannelsCollector getRemotePolicies "+
-			"failed with: %w", err)
-		Logger.Error(errWithContext)
-
-		if !IsDeadlineExceeded(err) {
-			c.errChan <- errWithContext
-		}
-
-		return
+		return fmt.Errorf("ChannelsCollector getRemotePolicies failed "+
+			"with: %w", err)
 	}
 
 	// Export the inbound fee metric for a series of amounts.
@@ -600,6 +570,8 @@ func (c *ChannelsCollector) Collect(ch chan<- prometheus.Metric) {
 		// Continue the series with double the amount.
 		receiveAmt *= 2
 	}
+
+	return nil
 }
 
 var closeTypeLabelMap = map[lndclient.CloseType]string{
@@ -695,12 +667,10 @@ func approximateInboundFee(amt btcutil.Amount, remotePolicies map[uint64]*lndcli
 
 // getRemotePolicies gets all the remote policies for enabled channels of this
 // node's peers.
-func (c *ChannelsCollector) getRemotePolicies(pubkey route.Vertex) (
-	map[uint64]*lndclient.RoutingPolicy, error) {
+func (c *ChannelsCollector) getRemotePolicies(ctx context.Context,
+	pubkey route.Vertex) (map[uint64]*lndclient.RoutingPolicy, error) {
 
-	nodeInfoResp, err := c.lnd.GetNodeInfo(
-		context.Background(), pubkey, true,
-	)
+	nodeInfoResp, err := c.lnd.GetNodeInfo(ctx, pubkey, true)
 	if err != nil {
 		return nil, err
 	}

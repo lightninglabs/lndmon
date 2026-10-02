@@ -58,32 +58,33 @@ func (c *WtClientCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.numPendingBackupsDesc
 }
 
-// Collect is called by the Prometheus registry when collecting metrics.
+// Name identifies this collector in the scrape outcome log.
+func (c *WtClientCollector) Name() string {
+	return "wt_client"
+}
+
+// Collect gathers the watchtower client metrics using the scrape's context so
+// an abandoned scrape cancels the in-flight lnd call. The error (if any) is
+// returned for the handler to classify and log.
 //
-// NOTE: Part of the prometheus.Collector interface.
-func (c *WtClientCollector) Collect(ch chan<- prometheus.Metric) {
-	towers, err := c.lnd.WtClient.ListTowers(
-		context.Background(), true, false,
-	)
+// NOTE: Part of the scrapeCollector interface.
+func (c *WtClientCollector) Collect(ctx context.Context,
+	ch chan<- prometheus.Metric) error {
+
+	towers, err := c.lnd.WtClient.ListTowers(ctx, true, false)
 	if err != nil {
-		// If the watchtower client is not active, we'll just return.
+		// If the watchtower client is not active, there's nothing to
+		// collect, so we return without an error.
 		if strings.Contains(
 			err.Error(), "watchtower client not active",
 		) {
 
 			watchtowerLogger.Debug("Watchtower client not active")
-			return
+			return nil
 		}
 
-		errWithContext := fmt.Errorf("WtClientCollector ListTowers failed "+
-			"with: %w", err)
-		Logger.Error(errWithContext)
-
-		if !IsDeadlineExceeded(err) {
-			c.errChan <- errWithContext
-		}
-
-		return
+		return fmt.Errorf("WtClientCollector ListTowers failed with: %w",
+			err)
 	}
 
 	for _, tower := range towers {
@@ -111,4 +112,6 @@ func (c *WtClientCollector) Collect(ch chan<- prometheus.Metric) {
 			float64(numPendingBackups), pubkey,
 		)
 	}
+
+	return nil
 }
