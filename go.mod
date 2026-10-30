@@ -188,3 +188,8 @@ require (
 replace google.golang.org/protobuf => github.com/lightninglabs/protobuf-go-hex-display v1.30.0-hex-display
 
 go 1.24.13
+
+// Go 1.24+ enables MPTCP on TCP listeners by default when the host supports
+// it. lndmon doesn't need MPTCP, so restore plain TCP for the Prometheus
+// listener. Operators can opt back in with GODEBUG=multipathtcp=1.
+godebug multipathtcp=0
