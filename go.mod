@@ -188,3 +188,5 @@ require (
 replace google.golang.org/protobuf => github.com/lightninglabs/protobuf-go-hex-display v1.30.0-hex-display
 
 go 1.24.13
+
+godebug multipathtcp=0
