@@ -164,6 +164,8 @@ Application Options:
       --disablegraph                                                 Do not collect graph metrics
       --disablehtlc                                                  Do not collect HTLCs metrics
       --disablepayments                                              Do not collect payments metrics
+      --disableinvoices                                              Do not collect invoice metrics
+      --seedmetrics                                                  Seed payment volume, fees, duration and hop metrics from retained lnd history
 
 prometheus:
       --prometheus.listenaddr=                                       the interface we should listen on for prometheus (default:
@@ -185,6 +187,36 @@ lnd:
 Help Options:
   -h, --help                                                         Show this help message
 ```
+
+### Metrics across restarts
+
+Enable `--seedmetrics` to restore these payment metrics from LND's retained
+payment history before the metrics endpoint starts:
+
+- `lnd_total_payments_sat`
+- `lnd_total_payments_fees_sat`
+- `lnd_payment_duration_seconds`
+- `lnd_payment_num_hops`
+
+Seeding is disabled by default. Existing payment counts, HTLC attempt counts,
+and attempts-per-payment histograms continue to track live events only.
+`--disablepayments` disables payment collection and seeding.
+
+History reads use paginated RPCs. `--lnd.rpctimeout` bounds each request.
+Startup time and seeding memory use depend on the retained payment history.
+Live updates and history reads are deduplicated by payment identity.
+Until the first stream update confirms subscription, the exporter periodically
+reconciles history to cover the subscription startup gap.
+
+LND can delete payment records or replace failed records when payments are
+retried. Seeding cannot recover those records. Restored totals reflect retained
+history and can therefore be lower than the previous process's totals.
+
+Invoice metrics use current-state gauges: `lnd_invoices` and `lnd_invoices_sat`.
+They load stored invoices before startup and refresh every 60 seconds.
+Each refresh reads all retained invoices through paginated RPCs.
+They do not require `--seedmetrics`. `--disableinvoices` disables these reads.
+See [metric definitions](metrics.md#invoice-metrics) for state and amount semantics.
 
 
 
