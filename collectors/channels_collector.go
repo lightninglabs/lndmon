@@ -710,7 +710,7 @@ func (c *ChannelsCollector) getRemotePolicies(pubkey route.Vertex) (
 		var policy *lndclient.RoutingPolicy
 		switch {
 		case i.Node1 == pubkey:
-			policy = i.Node1Policy
+			policy = i.Node2Policy
 
 		case i.Node2 == pubkey:
 			policy = i.Node1Policy
