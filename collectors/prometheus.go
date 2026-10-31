@@ -35,12 +35,19 @@ type PrometheusExporter struct {
 	htlcMonitor     *htlcMonitor
 	paymentsMonitor *paymentsMonitor
 
-	// collectors is the exporter's active set of collectors.
-	collectors []prometheus.Collector
+	// scrapeCollectors is the set of context-aware collectors that query lnd
+	// on each scrape. They are registered into a fresh per-request registry
+	// so the scrape's context can be threaded into their lnd calls.
+	scrapeCollectors []scrapeCollector
 
-	// errChan is an error channel that we receive errors from our
-	// collectors on.
-	errChan <-chan error
+	// eventCollectors is the set of collectors that are updated by background
+	// subscriptions (htlcs, payments) rather than by querying lnd on scrape.
+	// They are registered once with the default registry.
+	eventCollectors []prometheus.Collector
+
+	// errChan is an error channel that we receive errors from our collectors
+	// on, and that the scrape handler sends real collector errors into.
+	errChan chan error
 }
 
 // PrometheusConfig is the set of configuration data that specifies the
@@ -123,7 +130,9 @@ func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
 		lnd.Client, errChan, quitChan, monitoringCfg,
 	)
 
-	collectors := []prometheus.Collector{
+	// The pull collectors query lnd on each scrape. They are context-aware so
+	// an abandoned scrape cancels their in-flight lnd calls.
+	scrapeCollectors := []scrapeCollector{
 		NewChainCollector(lnd.Client, errChan),
 		chanCollector,
 		NewWalletCollector(lnd, errChan),
@@ -133,31 +142,81 @@ func NewPrometheusExporter(cfg *PrometheusConfig, lnd *lndclient.LndServices,
 		NewWtClientCollector(lnd, errChan),
 	}
 
-	if !monitoringCfg.DisableHtlc {
-		collectors = append(collectors, htlcMonitor.collectors()...)
-	}
-
-	if !monitoringCfg.DisablePayments {
-		collectors = append(
-			collectors, paymentsMonitor.collectors()...,
+	if !monitoringCfg.DisableGraph {
+		scrapeCollectors = append(
+			scrapeCollectors, NewGraphCollector(lnd.Client, errChan),
 		)
 	}
 
-	if !monitoringCfg.DisableGraph {
-		collectors = append(
-			collectors, NewGraphCollector(lnd.Client, errChan),
+	// The event collectors are fed by background subscriptions and don't
+	// query lnd on scrape, so they're registered once with the default
+	// registry.
+	var eventCollectors []prometheus.Collector
+
+	if !monitoringCfg.DisableHtlc {
+		eventCollectors = append(
+			eventCollectors, htlcMonitor.collectors()...,
+		)
+	}
+
+	if !monitoringCfg.DisablePayments {
+		eventCollectors = append(
+			eventCollectors, paymentsMonitor.collectors()...,
 		)
 	}
 
 	return &PrometheusExporter{
-		cfg:             cfg,
-		lnd:             lnd,
-		monitoringCfg:   monitoringCfg,
-		collectors:      collectors,
-		htlcMonitor:     htlcMonitor,
-		paymentsMonitor: paymentsMonitor,
-		errChan:         errChan,
+		cfg:              cfg,
+		lnd:              lnd,
+		monitoringCfg:    monitoringCfg,
+		scrapeCollectors: scrapeCollectors,
+		eventCollectors:  eventCollectors,
+		htlcMonitor:      htlcMonitor,
+		paymentsMonitor:  paymentsMonitor,
+		errChan:          errChan,
 	}, nil
+}
+
+// scrapeWriter wraps the http.ResponseWriter used to serve a Prometheus
+// scrape so we can record how long the scrape had been running when the
+// first write to the connection failed. A deliberate scraper disconnect
+// (e.g. a scrape exceeding its scrape_timeout) is detected separately via
+// the request context; this recorded write failure is what lets serveScrape
+// flag a write that broke without such a disconnect - most often a network
+// blip - apart from a slow-lnd scrape.
+type scrapeWriter struct {
+	http.ResponseWriter
+
+	// start is the time the scrape began, set before the metric handler
+	// runs.
+	start time.Time
+
+	// failed is set once the first write to the connection fails.
+	failed bool
+
+	// failedAt is how long after start the first write failure occurred.
+	failedAt time.Duration
+}
+
+// Write forwards to the embedded ResponseWriter, recording the elapsed time of
+// the first write that fails.
+func (w *scrapeWriter) Write(b []byte) (int, error) {
+	n, err := w.ResponseWriter.Write(b)
+	if err != nil && !w.failed {
+		w.failed = true
+		w.failedAt = time.Since(w.start)
+	}
+
+	return n, err
+}
+
+// Flush forwards to the embedded ResponseWriter's Flush if it implements
+// http.Flusher, so that wrapping it does not disable any streaming the
+// Prometheus handler relies on.
+func (w *scrapeWriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
 }
 
 // Start registers all relevant metrics with the Prometheus library, then
@@ -195,28 +254,134 @@ func (p *PrometheusExporter) Start() error {
 	// Finally, we'll launch the HTTP server that Prometheus will use to
 	// scrape our metrics.
 	go func() {
+		// promhttp logs a line for every metric family whose write
+		// fails, so a disconnecting scraper produces one "broken pipe"
+		// line per family (dozens per abandoned scrape). Filter those
+		// out - serveScrape reports the disconnect once, cleanly - while
+		// still surfacing genuine gather errors.
 		errorLogger := log.New(
-			os.Stdout, "promhttp",
+			brokenPipeFilter{w: os.Stdout}, "promhttp",
 			log.Ldate|log.Ltime|log.Lshortfile,
 		)
 
-		promHandler := promhttp.InstrumentMetricHandler(
-			prometheus.DefaultRegisterer,
-			promhttp.HandlerFor(
-				prometheus.DefaultGatherer,
-				promhttp.HandlerOpts{
-					ErrorLog:      errorLogger,
-					ErrorHandling: promhttp.ContinueOnError,
-				},
-			),
+		// We gather a fresh per-request registry (so each scrape's
+		// context can be bound into the collectors), which rules out
+		// InstrumentMetricHandler (it registers its metrics per call).
+		// Instead register the same promhttp_metric_handler_* metrics
+		// once and wrap the handler with them, so existing scrapes and
+		// dashboards see unchanged metric names.
+		requestsTotal := prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "promhttp_metric_handler_requests_total",
+				Help: "Total number of scrapes by HTTP status " +
+					"code.",
+			},
+			[]string{"code"},
 		)
-		http.Handle("/metrics", promHandler)
+		inFlight := prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "promhttp_metric_handler_requests_in_flight",
+			Help: "Current number of scrapes being served.",
+		})
+		prometheus.MustRegister(requestsTotal, inFlight)
+
+		// Initialize the status codes InstrumentMetricHandler reports so
+		// they appear at 0 before the first scrape of each kind, matching
+		// the previous handler's output.
+		for _, code := range []string{"200", "500", "503"} {
+			requestsTotal.WithLabelValues(code)
+		}
+
+		handler := http.HandlerFunc(func(w http.ResponseWriter,
+			r *http.Request) {
+
+			p.serveScrape(w, r, errorLogger)
+		})
+
+		http.Handle("/metrics", promhttp.InstrumentHandlerInFlight(
+			inFlight,
+			promhttp.InstrumentHandlerCounter(requestsTotal, handler),
+		))
 		Logger.Info(http.ListenAndServe(p.cfg.ListenAddr, nil))
 	}()
 
 	Logger.Info("Prometheus active!")
 
 	return nil
+}
+
+// serveScrape handles a single Prometheus scrape. It binds the request's
+// context into each pull collector - so the scraper disconnecting cancels the
+// in-flight lnd queries - gathers a fresh per-request registry alongside the
+// default one, and logs a single outcome line for any problem scrape (and
+// nothing for a clean one).
+func (p *PrometheusExporter) serveScrape(w http.ResponseWriter,
+	r *http.Request, errorLogger *log.Logger) {
+
+	start := time.Now()
+
+	// Build a fresh registry for this scrape, binding each context-aware
+	// collector to this request's context. A fresh registry and binding per
+	// request keeps concurrent scrapes isolated.
+	results := make([]*collectorResult, len(p.scrapeCollectors))
+	reqReg := prometheus.NewRegistry()
+	for i, sc := range p.scrapeCollectors {
+		results[i] = &collectorResult{name: sc.Name()}
+		reqReg.MustRegister(&boundCollector{
+			sc:     sc,
+			ctx:    r.Context(),
+			result: results[i],
+		})
+	}
+
+	promHandler := promhttp.HandlerFor(
+		prometheus.Gatherers{prometheus.DefaultGatherer, reqReg},
+		promhttp.HandlerOpts{
+			ErrorLog:      errorLogger,
+			ErrorHandling: promhttp.ContinueOnError,
+		},
+	)
+
+	sw := &scrapeWriter{ResponseWriter: w, start: start}
+	promHandler.ServeHTTP(sw, r)
+
+	// net/http cancels r.Context() when the client disconnects while we're
+	// serving; it is not canceled by our own return until after this handler
+	// exits. So a non-nil error here means the scraper went away mid-scrape.
+	disconnected := r.Context().Err() != nil
+
+	// Forward real collector errors to the error channel so the existing
+	// shutdown path can restart lndmon, and log the error text so the cause is
+	// visible immediately rather than only when the process exits. Canceled
+	// and lnd-timeout outcomes are expected transient conditions and are
+	// skipped.
+	//
+	// When the scraper disconnected we skip this entirely: an abandoned scrape
+	// cancels the in-flight lnd calls, and that cancellation does not always
+	// surface as a Canceled code (a transport teardown can appear as
+	// Unavailable, EOF, etc.), which would otherwise be misclassified as a
+	// real error and needlessly restart lndmon. A genuine persistent lnd
+	// failure fails fast without a disconnect and is still caught on the next
+	// scrape. The send is non-blocking so a full buffer can never stall a
+	// scrape.
+	if !disconnected {
+		for _, res := range results {
+			if res.status == statusError && res.err != nil {
+				Logger.Error(res.err)
+
+				select {
+				case p.errChan <- res.err:
+				default:
+				}
+			}
+		}
+	}
+
+	if logit, msg := scrapeOutcome(
+		r.RemoteAddr, time.Since(start), disconnected, sw.failed,
+		sw.failedAt, results,
+	); logit {
+		Logger.Warn(msg)
+	}
 }
 
 // Stop shuts down the prometheus exporter, waiting for all goroutines to exit
@@ -238,11 +403,13 @@ func (p *PrometheusExporter) Errors() <-chan error {
 	return p.errChan
 }
 
-// registerMetrics iterates through all the registered collectors and attempts
-// to register each one. If any of the collectors fail to register, then an
-// error will be returned.
+// registerMetrics registers the event collectors with the default registry.
+// The pull (scrape) collectors are not registered here; they are registered
+// into a fresh per-request registry in serveScrape so each scrape's context
+// can be bound into their lnd calls. If any collector fails to register, an
+// error is returned.
 func (p *PrometheusExporter) registerMetrics() error {
-	for _, collector := range p.collectors {
+	for _, collector := range p.eventCollectors {
 		err := prometheus.Register(collector)
 		if err != nil {
 			return err
