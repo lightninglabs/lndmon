@@ -316,21 +316,24 @@ func (g *GraphCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- g.medianMaxHtlcMsatDesc
 }
 
-// Collect is called by the Prometheus registry when collecting metrics.
+// Name identifies this collector in the scrape outcome log.
+func (g *GraphCollector) Name() string {
+	return "graph"
+}
+
+// Collect gathers the graph metrics using the scrape's context so an abandoned
+// scrape cancels the in-flight lnd calls. DescribeGraph is one of the heaviest
+// lnd calls, so a slow or abandoned scrape often shows up here. The error (if
+// any) is returned for the handler to classify and log.
 //
-// NOTE: Part of the prometheus.Collector interface.
-func (g *GraphCollector) Collect(ch chan<- prometheus.Metric) {
-	resp, err := g.lnd.DescribeGraph(context.Background(), false)
+// NOTE: Part of the scrapeCollector interface.
+func (g *GraphCollector) Collect(ctx context.Context,
+	ch chan<- prometheus.Metric) error {
+
+	resp, err := g.lnd.DescribeGraph(ctx, false)
 	if err != nil {
-		errWithContext := fmt.Errorf("GraphCollector DescribeGraph failed "+
-			"with: %w", err)
-		Logger.Error(errWithContext)
-
-		if !IsDeadlineExceeded(err) {
-			g.errChan <- errWithContext
-		}
-
-		return
+		return fmt.Errorf("GraphCollector DescribeGraph failed with: %w",
+			err)
 	}
 
 	ch <- prometheus.MustNewConstMetric(
@@ -344,17 +347,10 @@ func (g *GraphCollector) Collect(ch chan<- prometheus.Metric) {
 
 	g.collectRoutingPolicyMetrics(ch, resp.Edges)
 
-	networkInfo, err := g.lnd.NetworkInfo(context.Background())
+	networkInfo, err := g.lnd.NetworkInfo(ctx)
 	if err != nil {
-		errWithContext := fmt.Errorf("GraphCollector NetworkInfo failed "+
-			"with: %w", err)
-		Logger.Error(errWithContext)
-
-		if !IsDeadlineExceeded(err) {
-			g.errChan <- errWithContext
-		}
-
-		return
+		return fmt.Errorf("GraphCollector NetworkInfo failed with: %w",
+			err)
 	}
 
 	ch <- prometheus.MustNewConstMetric(
@@ -397,6 +393,8 @@ func (g *GraphCollector) Collect(ch chan<- prometheus.Metric) {
 		g.medianChanSizeDesc, prometheus.GaugeValue,
 		float64(networkInfo.MedianChannelSize),
 	)
+
+	return nil
 }
 
 func (g *GraphCollector) collectRoutingPolicyMetrics(

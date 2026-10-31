@@ -107,10 +107,18 @@ func (s *StateCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- s.timeToUnlockDesc
 }
 
-// Collect is called by the Prometheus registry when collecting metrics.
+// Name identifies this collector in the scrape outcome log.
+func (s *StateCollector) Name() string {
+	return "state"
+}
+
+// Collect emits the state metrics from cached values. It makes no lnd call, so
+// the context is unused and it never returns an error.
 //
-// NOTE: Part of the prometheus.Collector interface.
-func (s *StateCollector) Collect(ch chan<- prometheus.Metric) {
+// NOTE: Part of the scrapeCollector interface.
+func (s *StateCollector) Collect(_ context.Context,
+	ch chan<- prometheus.Metric) error {
+
 	// Lock for read
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
@@ -128,4 +136,6 @@ func (s *StateCollector) Collect(ch chan<- prometheus.Metric) {
 			s.timeToUnlockDesc, prometheus.GaugeValue, float64(timeToUnlockInMSecs),
 		)
 	}
+
+	return nil
 }

@@ -105,25 +105,25 @@ func (u *WalletCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- u.keyCountDesc
 }
 
-// Collect is called by the Prometheus registry when collecting metrics.
+// Name identifies this collector in the scrape outcome log.
+func (u *WalletCollector) Name() string {
+	return "wallet"
+}
+
+// Collect gathers the wallet metrics using the scrape's context so an abandoned
+// scrape cancels the in-flight lnd calls. The error (if any) is returned for
+// the handler to classify and log.
 //
-// NOTE: Part of the prometheus.Collector interface.
-func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
+// NOTE: Part of the scrapeCollector interface.
+func (u *WalletCollector) Collect(ctx context.Context,
+	ch chan<- prometheus.Metric) error {
+
 	// First, we'll fetch information w.r.t all UTXOs in the wallet. The
 	// large max confs value means we'll capture all the UTXOs.
-	utxos, err := u.lnd.WalletKit.ListUnspent(
-		context.Background(), 0, math.MaxInt32,
-	)
+	utxos, err := u.lnd.WalletKit.ListUnspent(ctx, 0, math.MaxInt32)
 	if err != nil {
-		errWithContext := fmt.Errorf("WalletCollector ListUnspent failed "+
-			"with: %w", err)
-		Logger.Error(errWithContext)
-
-		if !IsDeadlineExceeded(err) {
-			u.errChan <- errWithContext
-		}
-
-		return
+		return fmt.Errorf("WalletCollector ListUnspent failed with: %w",
+			err)
 	}
 
 	var (
@@ -175,17 +175,10 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 
 	// Next, we'll query the wallet to determine our confirmed and unconf
 	// balance at this instance.
-	walletBal, err := u.lnd.Client.WalletBalance(context.Background())
+	walletBal, err := u.lnd.Client.WalletBalance(ctx)
 	if err != nil {
-		errWithContext := fmt.Errorf("WalletCollector WalletBalance "+
-			"failed with: %w", err)
-		Logger.Error(errWithContext)
-
-		if !IsDeadlineExceeded(err) {
-			u.errChan <- errWithContext
-		}
-
-		return
+		return fmt.Errorf("WalletCollector WalletBalance failed with: %w",
+			err)
 	}
 
 	ch <- prometheus.MustNewConstMetric(
@@ -197,17 +190,10 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 		float64(walletBal.Unconfirmed),
 	)
 
-	accounts, err := u.lnd.WalletKit.ListAccounts(context.Background(), "", 0)
+	accounts, err := u.lnd.WalletKit.ListAccounts(ctx, "", 0)
 	if err != nil {
-		errWithContext := fmt.Errorf("WalletCollector ListAccounts "+
-			"failed with: %w", err)
-		Logger.Error(errWithContext)
-
-		if !IsDeadlineExceeded(err) {
-			u.errChan <- errWithContext
-		}
-
-		return
+		return fmt.Errorf("WalletCollector ListAccounts failed with: %w",
+			err)
 	}
 
 	for _, account := range accounts {
@@ -233,4 +219,6 @@ func (u *WalletCollector) Collect(ch chan<- prometheus.Metric) {
 			)
 		}
 	}
+
+	return nil
 }
