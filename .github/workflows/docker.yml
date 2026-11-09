@@ -19,13 +19,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set up QEMU
-        uses: lightninglabs/gh-actions/setup-qemu-action@39555064b3ae5c6d5c71a8ab304355faeaf3f4d4
+        uses: lightninglabs/gh-actions/setup-qemu-action@2dc80276a67ed623f48270cfa858ee7f1025fe61 # 2026.11.09.00
 
       - name: Set up Docker Buildx
-        uses: lightninglabs/gh-actions/setup-buildx-action@39555064b3ae5c6d5c71a8ab304355faeaf3f4d4
+        uses: lightninglabs/gh-actions/setup-buildx-action@2dc80276a67ed623f48270cfa858ee7f1025fe61 # 2026.11.09.00
 
       - name: Login to DockerHub
-        uses: lightninglabs/gh-actions/login-action@39555064b3ae5c6d5c71a8ab304355faeaf3f4d4
+        uses: lightninglabs/gh-actions/login-action@2dc80276a67ed623f48270cfa858ee7f1025fe61 # 2026.11.09.00
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_API_KEY }}
@@ -35,9 +35,14 @@ jobs:
 
       - name: Build and push
         id: docker_build
-        uses: lightninglabs/gh-actions/build-push-action@39555064b3ae5c6d5c71a8ab304355faeaf3f4d4
+        uses: lightninglabs/gh-actions/build-push-action@2dc80276a67ed623f48270cfa858ee7f1025fe61 # 2026.11.09.00
+        env:
+          # Don't upload a build record artifact for each build.
+          DOCKER_BUILD_RECORD_UPLOAD: false
         with:
           push: true
+          # Publish the image without a provenance attestation, as before.
+          provenance: false
           platforms: linux/amd64,linux/arm64
           tags: "${{ env.DOCKER_REPO }}/${{ env.DOCKER_IMAGE }}:${{ env.RELEASE_VERSION }}"
           build-args: checkout=${{ env.RELEASE_VERSION }}
